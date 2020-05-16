@@ -2,6 +2,7 @@ use crate::geometry::*;
 use crate::raytrace;
 
 use minifb::{Window, WindowOptions};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread;
@@ -29,6 +30,14 @@ pub fn render() {
         });
     }
 
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || loop {
+        thread::sleep(std::time::Duration::from_millis(250));
+        if let Err(_) = tx.send(()) {
+            break;
+        }
+    });
+
     while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
         if let Ok(b) = buf.try_read() {
             window
@@ -37,7 +46,12 @@ pub fn render() {
         } else {
             // Avoid R/W contention with sleeping, but update the events
             // so we can close the window without blocking.
-            window.update();
+            loop {
+                window.update();
+                if let Ok(_) = rx.try_recv() {
+                    break;
+                }
+            }
         }
     }
 }
