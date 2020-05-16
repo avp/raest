@@ -1,6 +1,7 @@
+mod geometry;
+mod ray;
 mod raytrace;
 mod renderer;
-mod scene;
 
 fn main() {
     renderer::render();

@@ -1,5 +1,5 @@
+use crate::geometry::*;
 use crate::raytrace;
-use crate::scene::*;
 
 use minifb::{Window, WindowOptions};
 use std::sync::Arc;
@@ -16,10 +16,10 @@ pub fn render() {
     let buf = Arc::new(RwLock::new(make_buffer()));
 
     let scene = Scene {
-        spheres: vec![Sphere {
-            center: Point::new(0.0, 0.0, -1.0),
-            radius: 0.5,
-        }],
+        spheres: vec![
+            Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5),
+            Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0),
+        ],
     };
 
     {
@@ -38,7 +38,6 @@ pub fn render() {
             // Avoid R/W contention with sleeping, but update the events
             // so we can close the window without blocking.
             window.update();
-            thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 }
