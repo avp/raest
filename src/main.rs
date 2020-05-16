@@ -1,3 +1,7 @@
+mod raytrace;
+mod renderer;
+mod scene;
+
 fn main() {
-    println!("Hello, world!");
+    renderer::render();
 }
