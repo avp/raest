@@ -5,7 +5,7 @@ use crate::util::*;
 #[derive(Debug, Copy, Clone)]
 pub enum Material {
     Lambertian(Color),
-    Metal(Color),
+    Metal(Color, f64),
 }
 
 impl Material {
@@ -21,12 +21,13 @@ impl Material {
                     albedo,
                 )
             }
-            Material::Metal(albedo) => {
+            Material::Metal(albedo, roughness) => {
                 let scatter_dir = reflect(inbound.dir.normalize(), hit.normal);
                 (
                     Ray {
                         origin: hit.point,
-                        dir: scatter_dir,
+                        dir: scatter_dir
+                            + (roughness * random_in_unit_sphere()),
                     },
                     albedo,
                 )
