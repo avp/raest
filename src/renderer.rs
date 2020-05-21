@@ -1,3 +1,4 @@
+use crate::color::Color;
 use crate::geometry::*;
 use crate::raytrace;
 
@@ -18,8 +19,16 @@ pub fn render() {
 
     let scene = Scene {
         spheres: vec![
-            Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5),
-            Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0),
+            Sphere::new(
+                Material::Lambertian(Color::new(0.7, 0.3, 0.3)),
+                Point::new(0.0, 0.0, -1.0),
+                0.5,
+            ),
+            Sphere::new(
+                Material::Lambertian(Color::new(0.8, 0.8, 0.0)),
+                Point::new(0.0, -100.5, -1.0),
+                100.0,
+            ),
         ],
     };
 
@@ -39,6 +48,7 @@ pub fn render() {
     });
 
     while window.is_open() && !window.is_key_down(minifb::Key::Escape) {
+        thread::sleep(std::time::Duration::from_millis(10));
         if let Ok(b) = buf.try_read() {
             window
                 .update_with_buffer(&*b, WIN_WIDTH, WIN_HEIGHT)

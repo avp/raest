@@ -1,13 +1,10 @@
+use crate::color::Color;
 use crate::geometry::*;
 use crate::renderer::Buffer;
+use crate::util::*;
 
-use nalgebra::Vector3;
-use std::f64::consts::PI;
-use std::ops::Range;
 use std::sync::Arc;
 use std::sync::RwLock;
-
-pub type Color = Vector3<f64>;
 
 struct Camera {
     pub origin: Point,
@@ -89,15 +86,8 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
     }
     match scene.hit(ray, 0.0001..) {
         Some(hit) => {
-            let target = hit.point + hit.normal + random_in_unit_sphere();
-            0.5 * ray_color(
-                scene,
-                Ray {
-                    origin: hit.point,
-                    dir: target - hit.point,
-                },
-                depth + 1,
-            )
+            let (outbound, attenuation) = hit.material.scatter(&ray, &hit);
+            attenuation.component_mul(&ray_color(scene, outbound, depth + 1))
         }
         None => {
             let dir = ray.dir.normalize();
@@ -116,16 +106,4 @@ fn write_color(color: Color) -> u32 {
         (x2 * 256.0f64) as u8 as u32
     }
     (correct(color[0]) << 16) | (correct(color[1]) << 8) | correct(color[2])
-}
-
-fn random_f64(range: Range<f64>) -> f64 {
-    use rand::Rng;
-    (rand::thread_rng().gen::<f64>() * (range.end - range.start)) + range.start
-}
-
-fn random_in_unit_sphere() -> Vector {
-    let a = random_f64(0.0..2.0 * PI);
-    let z = random_f64(-1.0..1.0);
-    let r = (1.0 - z.powi(2)).sqrt();
-    Vector::new(r * a.cos(), r * a.sin(), z)
 }

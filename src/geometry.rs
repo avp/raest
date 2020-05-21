@@ -1,6 +1,7 @@
 use nalgebra::{Point3, Vector3};
 use std::ops::{Bound, RangeBounds};
 
+pub use crate::material::Material;
 pub use crate::ray::Ray;
 
 pub type Point = Point3<f64>;
@@ -49,11 +50,12 @@ pub struct Hit {
     pub normal: Vector,
     pub t: f64,
     pub front_facing: bool,
+    pub material: Material,
 }
 
 impl Hit {
     #[inline]
-    fn new(ray: Ray, normal: Vector, t: f64) -> Hit {
+    fn new(ray: Ray, normal: Vector, t: f64, material: Material) -> Hit {
         let point = ray.origin + t * ray.dir;
         let front_facing = ray.dir.dot(&normal) < 0.0;
         Hit {
@@ -61,6 +63,7 @@ impl Hit {
             normal: if front_facing { normal } else { -normal },
             t,
             front_facing,
+            material,
         }
     }
 }
@@ -75,13 +78,18 @@ pub trait Object {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Sphere {
+    pub material: Material,
     pub center: Point,
     pub radius: f64,
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64) -> Sphere {
-        Sphere { center, radius }
+    pub fn new(material: Material, center: Point, radius: f64) -> Sphere {
+        Sphere {
+            material,
+            center,
+            radius,
+        }
     }
 }
 
@@ -109,7 +117,7 @@ impl Object for Sphere {
             if range.contains(&t) {
                 let point = ray.origin + t * ray.dir;
                 let normal = (point - self.center).normalize();
-                Some(Hit::new(ray, normal, t))
+                Some(Hit::new(ray, normal, t, self.material))
             } else {
                 None
             }
