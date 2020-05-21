@@ -14,3 +14,7 @@ pub fn random_in_unit_sphere() -> Vector {
     let r = (1.0 - z.powi(2)).sqrt();
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
+
+pub fn reflect(vec: Vector, norm: Vector) -> Vector {
+    vec - (2.0 * vec.dot(&norm) * norm)
+}

@@ -29,6 +29,16 @@ pub fn render() {
                 Point::new(0.0, -100.5, -1.0),
                 100.0,
             ),
+            Sphere::new(
+                Material::Metal(Color::new(0.8, 0.6, 0.2)),
+                Point::new(1.0, 0.0, -1.0),
+                0.5,
+            ),
+            Sphere::new(
+                Material::Metal(Color::new(0.8, 0.8, 0.8)),
+                Point::new(-1.0, 0.0, -1.0),
+                0.5,
+            ),
         ],
     };
 
