@@ -1,3 +1,5 @@
+#![feature(clamp)]
+
 mod geometry;
 mod ray;
 mod raytrace;
