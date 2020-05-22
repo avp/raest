@@ -28,7 +28,7 @@ pub fn render() {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || loop {
         thread::sleep(std::time::Duration::from_millis(500));
-        if let Err(_) = tx.send(()) {
+        if tx.send(()).is_err() {
             break;
         }
     });
@@ -44,7 +44,7 @@ pub fn render() {
             // so we can close the window without blocking.
             loop {
                 window.update();
-                if let Ok(_) = rx.try_recv() {
+                if rx.try_recv().is_ok() {
                     break;
                 }
             }

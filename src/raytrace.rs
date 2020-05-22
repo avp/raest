@@ -87,7 +87,7 @@ fn raytrace_rows(
 ) {
     let mut row = vec![0; im_width];
     for r in rows {
-        for c in 0..im_width {
+        for (c, result) in row.iter_mut().enumerate() {
             let mut color_sum = Color::zeros();
             for _ in 0..NUM_SAMPLES {
                 let u =
@@ -97,7 +97,7 @@ fn raytrace_rows(
                 let ray = camera.get_ray(u, v);
                 color_sum += ray_color(scene, ray, 0);
             }
-            row[c] = write_color(color_sum);
+            *result = write_color(color_sum);
         }
         {
             let mut b = buf.write().unwrap();

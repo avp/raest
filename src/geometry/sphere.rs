@@ -1,8 +1,9 @@
 use super::{Hit, Hittable, Point, Ray, Vector, AABB};
 use crate::material::Material;
+use std::f64::consts::PI;
 use std::ops::Range;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct Sphere {
     pub material: Material,
     pub center: Point,
@@ -54,7 +55,17 @@ impl Hittable for Sphere {
             };
             let point = ray.at(t);
             let normal = (point - self.center) * (1.0 / self.radius);
-            Some(Hit::new(ray, normal, t, self.material))
+            Some(Hit::new(ray, normal, t, &self.material, self.get_uv(point)))
         }
+    }
+}
+
+impl Sphere {
+    fn get_uv(&self, point: Point) -> (f64, f64) {
+        let phi = point.z.atan2(point.x);
+        let theta = point.y.asin();
+        let u = 1.0 - (phi + PI) / (2.0 * PI);
+        let v = (theta + PI / 2.0) / PI;
+        (u, v)
     }
 }

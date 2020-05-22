@@ -36,12 +36,11 @@ impl BVHNode {
         mut objects: Vec<Box<dyn Hittable>>,
         axis: usize,
     ) -> Arc<BVHNode> {
-        let comparator =
-            |a: &Box<dyn Hittable>, b: &Box<dyn Hittable>| -> Ordering {
-                let a_box = a.bounding_box();
-                let b_box = b.bounding_box();
-                a_box.cmp_axis(&b_box, axis)
-            };
+        let comparator = |a: &dyn Hittable, b: &dyn Hittable| -> Ordering {
+            let a_box = a.bounding_box();
+            let b_box = b.bounding_box();
+            a_box.cmp_axis(&b_box, axis)
+        };
 
         let num_objects = objects.len();
 
@@ -54,13 +53,13 @@ impl BVHNode {
                 2 => {
                     let a1: Box<dyn Hittable> = objects.pop().unwrap();
                     let a2: Box<dyn Hittable> = objects.pop().unwrap();
-                    match comparator(&a1, &a2) {
+                    match comparator(&*a1, &*a2) {
                         Ordering::Less => (a1.into(), a2.into()),
                         _ => (a2.into(), a1.into()),
                     }
                 }
                 _ => {
-                    objects.sort_by(comparator);
+                    objects.sort_by(|a, b| comparator(&**a, &**b));
                     let mid = num_objects / 2;
                     let obj_right = objects.split_off(mid);
                     let obj_left = objects;

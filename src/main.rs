@@ -4,6 +4,7 @@ mod geometry;
 mod material;
 mod raytrace;
 mod renderer;
+mod texture;
 mod util;
 
 mod color {

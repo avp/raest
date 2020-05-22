@@ -7,6 +7,7 @@ pub use ray::Ray;
 
 use crate::color::Color;
 use crate::material::Material;
+use crate::texture::Texture;
 use crate::util::*;
 use nalgebra::{Point3, Vector3};
 use std::ops::Range;
@@ -44,7 +45,8 @@ impl Scene {
     #[allow(dead_code)]
     pub fn random(n: u32) -> Scene {
         let mut objects: Vec<Box<dyn Hittable>> = vec![];
-        let ground_material = Material::Lambertian(Color::new(0.5, 0.5, 0.5));
+        let ground_material =
+            Material::Lambertian(Texture::Solid(Color::new(0.5, 0.5, 0.5)));
         objects.push(Sphere::new(
             ground_material,
             Point::new(0.0, -1000.0, 0.0),
@@ -71,7 +73,7 @@ impl Scene {
                             random_f64(0.0..1.0),
                             random_f64(0.0..1.0),
                         );
-                        material = Material::Lambertian(albedo);
+                        material = Material::Lambertian(Texture::Solid(albedo));
                     } else if mat_rand < 0.95 {
                         let albedo = Color::new(
                             random_f64(0.5..1.0),
@@ -92,7 +94,8 @@ impl Scene {
         let material1 = Material::Dielectric(1.5);
         objects.push(Sphere::new(material1, Point::new(0.0, 1.0, 0.0), 1.0));
 
-        let material2 = Material::Lambertian(Color::new(0.4, 0.2, 0.1));
+        let material2 =
+            Material::Lambertian(Texture::Solid(Color::new(0.4, 0.2, 0.1)));
         objects.push(Sphere::new(material2, Point::new(-4.0, 1.0, 0.0), 1.0));
 
         let material3 = Material::Metal(Color::new(0.7, 0.6, 0.5), 0.0);
@@ -105,12 +108,12 @@ impl Scene {
     pub fn test() -> Scene {
         Scene::from_objects(vec![
             Sphere::new(
-                Material::Lambertian(Color::new(0.7, 0.3, 0.3)),
+                Material::Lambertian(Texture::Solid(Color::new(0.7, 0.3, 0.3))),
                 Point::new(0.0, 0.0, -1.0),
                 0.5,
             ),
             Sphere::new(
-                Material::Lambertian(Color::new(0.8, 0.8, 0.0)),
+                Material::Lambertian(Texture::Solid(Color::new(0.8, 0.8, 0.0))),
                 Point::new(0.0, -100.5, -1.0),
                 100.0,
             ),
@@ -133,18 +136,25 @@ impl Scene {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Hit {
+#[derive(Debug)]
+pub struct Hit<'obj> {
     pub point: Point,
     pub normal: Vector,
     pub t: f64,
     pub front_facing: bool,
-    pub material: Material,
+    pub material: &'obj Material,
+    pub uv: (f64, f64),
 }
 
-impl Hit {
+impl<'obj> Hit<'obj> {
     #[inline]
-    fn new(ray: Ray, normal: Vector, t: f64, material: Material) -> Hit {
+    fn new(
+        ray: Ray,
+        normal: Vector,
+        t: f64,
+        material: &'obj Material,
+        uv: (f64, f64),
+    ) -> Hit<'obj> {
         let point = ray.origin + t * ray.dir;
         let front_facing = ray.dir.dot(&normal) < 0.0;
         Hit {
@@ -153,6 +163,7 @@ impl Hit {
             t,
             front_facing,
             material,
+            uv,
         }
     }
 }
