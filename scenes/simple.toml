@@ -1,0 +1,61 @@
+background = [0.5, 0.7, 1.0]
+
+[camera]
+from = [0, 2, 8]
+at = [0, 0, 0]
+up = [0, 1, 0]
+dist = 10.0
+vfov = 20
+aperture = 0.1
+
+[textures.green]
+kind = "Solid"
+color = [0.1, 0.8, 0.3]
+[materials.green]
+kind = "Lambertian"
+texture = "green"
+
+[textures.ground]
+kind = "Solid"
+color = [0.8, 0.8, 0]
+[materials.ground]
+kind = "Lambertian"
+texture = "ground"
+
+[materials.metal]
+kind = "Metal"
+color = [0.8, 0.6, 0.2]
+roughness = 0
+
+[materials.glass]
+kind = "Dielectric"
+ior = 1.5
+
+[[objects]]
+kind = "Sphere"
+material = "ground"
+center = [0, -100.5, 1]
+radius = 100
+
+[[objects]]
+kind = "Sphere"
+material = "green"
+center = [0, 0, -1]
+radius = 0.5
+
+[[objects]]
+kind = "Sphere"
+material = "metal"
+center = [1, 0, -1]
+radius = 0.5
+
+[[objects]]
+kind = "Sphere"
+material = "glass"
+center = [-1, 0, -1]
+radius = 0.5
+[[objects]]
+kind = "Sphere"
+material = "glass"
+center = [-1, 0, -1]
+radius = -0.45
