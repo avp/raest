@@ -82,11 +82,11 @@ pub fn raytrace(
     im_height: usize,
 ) {
     let aspect_ratio: f64 = im_width as f64 / im_height as f64;
-    let from = Point::new(3.0, 3.0, 2.0);
-    let at = Point::new(0.0, 0.0, -1.0);
+    let from = Point::new(13.0, 2.0, 3.0);
+    let at = Point::new(0.0, 0.0, 0.0);
     let up = Vector::new(0.0, 1.0, 0.0);
-    let dist = (from - at).norm();
-    let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 2.0, dist);
+    let dist = 10.0;
+    let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
     let mut row = vec![Color::new(0.0, 0.0, 0.0); im_width];
     for r in 0..im_height {

@@ -1,3 +1,5 @@
+use crate::color::Color;
+use crate::util::*;
 use nalgebra::{Point3, Vector3};
 use std::ops::{Bound, RangeBounds};
 
@@ -21,6 +23,62 @@ fn bound_cloned<T: Clone>(b: Bound<&T>) -> Bound<T> {
 }
 
 impl Scene {
+    pub fn random() -> Scene {
+        let mut spheres = vec![];
+        let ground_material = Material::Lambertian(Color::new(0.5, 0.5, 0.5));
+        spheres.push(Sphere::new(
+            ground_material,
+            Point::new(0.0, -1000.0, 0.0),
+            1000.0,
+        ));
+
+        for a in -11..11 {
+            for b in -11..11 {
+                let mat_rand = random_f64(0.0..1.0);
+                let center = Point::new(
+                    a as f64 + 0.9 * random_f64(0.0..1.0),
+                    0.2,
+                    b as f64 + 0.9 * random_f64(0.0..1.0),
+                );
+
+                if (center - Vector::new(4.0, 0.2, 0.0)).coords.norm() > 0.9 {
+                    let material;
+
+                    if mat_rand < 0.8 {
+                        let albedo = Color::new(
+                            random_f64(0.0..1.0),
+                            random_f64(0.0..1.0),
+                            random_f64(0.0..1.0),
+                        );
+                        material = Material::Lambertian(albedo);
+                    } else if mat_rand < 0.95 {
+                        let albedo = Color::new(
+                            random_f64(0.5..1.0),
+                            random_f64(0.5..1.0),
+                            random_f64(0.5..1.0),
+                        );
+                        let fuzz = random_f64(0.0..0.5);
+                        material = Material::Metal(albedo, fuzz);
+                    } else {
+                        material = Material::Dielectric(1.5);
+                    }
+
+                    spheres.push(Sphere::new(material, center, 0.2));
+                }
+            }
+        }
+
+        let material1 = Material::Dielectric(1.5);
+        spheres.push(Sphere::new(material1, Point::new(0.0, 1.0, 0.0), 1.0));
+
+        let material2 = Material::Lambertian(Color::new(0.4, 0.2, 0.1));
+        spheres.push(Sphere::new(material2, Point::new(-4.0, 1.0, 0.0), 1.0));
+
+        let material3 = Material::Metal(Color::new(0.7, 0.6, 0.5), 0.0);
+        spheres.push(Sphere::new(material3, Point::new(4.0, 1.0, 0.0), 1.0));
+
+        Scene { spheres }
+    }
     pub fn hit<Bounds: RangeBounds<f64>>(
         &self,
         ray: Ray,
