@@ -54,15 +54,21 @@ impl Hittable for Sphere {
             };
             let point = ray.at(t);
             let normal = (point - self.center) * (1.0 / self.radius);
-            Some(Hit::new(ray, normal, t, &self.material, self.get_uv(point)))
+            Some(Hit::new(
+                ray,
+                normal,
+                t,
+                &self.material,
+                self.get_uv(normal),
+            ))
         }
     }
 }
 
 impl Sphere {
-    fn get_uv(&self, point: Point) -> (f64, f64) {
-        let phi = point.z.atan2(point.x);
-        let theta = point.y.asin();
+    fn get_uv(&self, loc: Vector) -> (f64, f64) {
+        let phi = loc.z.atan2(loc.x);
+        let theta = loc.y.asin();
         let u = 1.0 - (phi + PI) / (2.0 * PI);
         let v = (theta + PI / 2.0) / PI;
         (u, v)

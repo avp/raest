@@ -2,6 +2,7 @@
 
 use structopt::StructOpt;
 
+mod camera;
 mod config;
 mod geometry;
 mod material;

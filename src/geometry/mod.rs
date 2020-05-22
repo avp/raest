@@ -140,7 +140,11 @@ impl Scene {
 
     #[allow(dead_code)]
     pub fn earth() -> Scene {
-        unimplemented!();
+        let earth_tex =
+            Texture::Image(image::open("images/earthmap.jpg").unwrap());
+        let global =
+            Sphere::new(Material::Lambertian(earth_tex), Point::origin(), 2.0);
+        Scene::from_objects(vec![global])
     }
 }
 
