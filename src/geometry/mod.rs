@@ -1,18 +1,25 @@
-use crate::bvh::BVHNode;
+mod aabb;
+mod bvh;
+mod ray;
+mod sphere;
+
+pub use ray::Ray;
+
 use crate::color::Color;
+use crate::material::Material;
 use crate::util::*;
 use nalgebra::{Point3, Vector3};
 use std::ops::Range;
 use std::sync::Arc;
 
-pub use crate::aabb::AABB;
-pub use crate::material::Material;
-pub use crate::ray::Ray;
+use aabb::AABB;
+use bvh::BVHNode;
+use sphere::Sphere;
 
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
-pub trait Hittable: Send + Sync {
+trait Hittable: Send + Sync {
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
 }
@@ -23,10 +30,15 @@ pub struct Scene {
 
 impl Scene {
     #[allow(dead_code)]
-    pub fn from_objects(objects: Vec<Box<dyn Hittable>>) -> Scene {
+    fn from_objects(objects: Vec<Box<dyn Hittable>>) -> Scene {
         Scene {
             bvh: BVHNode::from_hittables(objects),
         }
+    }
+
+    #[inline]
+    pub fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
+        self.bvh.hit(ray, range)
     }
 
     #[allow(dead_code)]
@@ -86,14 +98,38 @@ impl Scene {
         let material3 = Material::Metal(Color::new(0.7, 0.6, 0.5), 0.0);
         objects.push(Sphere::new(material3, Point::new(4.0, 1.0, 0.0), 1.0));
 
-        Scene {
-            bvh: BVHNode::from_hittables(objects),
-        }
+        Self::from_objects(objects)
     }
 
-    #[inline]
-    pub fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
-        self.bvh.hit(ray, range)
+    #[allow(dead_code)]
+    pub fn test() -> Scene {
+        Scene::from_objects(vec![
+            Sphere::new(
+                Material::Lambertian(Color::new(0.7, 0.3, 0.3)),
+                Point::new(0.0, 0.0, -1.0),
+                0.5,
+            ),
+            Sphere::new(
+                Material::Lambertian(Color::new(0.8, 0.8, 0.0)),
+                Point::new(0.0, -100.5, -1.0),
+                100.0,
+            ),
+            Sphere::new(
+                Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
+                Point::new(1.0, 0.0, -1.0),
+                0.5,
+            ),
+            Sphere::new(
+                Material::Dielectric(1.5),
+                Point::new(-1.0, 0.0, -1.0),
+                0.5,
+            ),
+            Sphere::new(
+                Material::Dielectric(1.5),
+                Point::new(-1.0, 0.0, -1.0),
+                -0.45,
+            ),
+        ])
     }
 }
 
@@ -117,63 +153,6 @@ impl Hit {
             t,
             front_facing,
             material,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Sphere {
-    pub material: Material,
-    pub center: Point,
-    pub radius: f64,
-}
-
-impl Sphere {
-    pub fn new(material: Material, center: Point, radius: f64) -> Box<Sphere> {
-        Box::new(Sphere {
-            material,
-            center,
-            radius,
-        })
-    }
-}
-
-impl Hittable for Sphere {
-    fn bounding_box(&self) -> AABB {
-        AABB::new(
-            self.center - Vector::repeat(self.radius),
-            self.center + Vector::repeat(self.radius),
-        )
-    }
-
-    fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
-        let oc = ray.origin - self.center;
-        // Solve the quadratic formula.
-        let (a, half_b, c) = (
-            ray.dir.norm_squared(),
-            oc.dot(&ray.dir),
-            oc.norm_squared() - (self.radius * self.radius),
-        );
-        let discriminant = (half_b * half_b) - (a * c);
-        if discriminant < 0.0 {
-            None
-        } else {
-            // b^2 - 4ac > 0 ==> there is at least one root.
-            // Subtract discriminant to find the smallest t such that
-            // there's an intersection.
-            let sqrt_disc = discriminant.sqrt();
-            let t1: f64 = (-half_b - sqrt_disc) / a;
-            let t2: f64 = (-half_b + sqrt_disc) / a;
-            let t = if range.contains(&t1) {
-                t1
-            } else if range.contains(&t2) {
-                t2
-            } else {
-                return None;
-            };
-            let point = ray.at(t);
-            let normal = (point - self.center) * (1.0 / self.radius);
-            Some(Hit::new(ray, normal, t, self.material))
         }
     }
 }

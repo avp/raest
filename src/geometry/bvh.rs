@@ -1,10 +1,9 @@
-use crate::geometry::*;
-use rand::seq::SliceRandom;
+use super::{Hit, Hittable, Ray, AABB};
 use std::cmp::Ordering;
 use std::ops::Range;
 use std::sync::Arc;
 
-pub struct BVHNode {
+pub(super) struct BVHNode {
     aabb: AABB,
     left: Arc<dyn Hittable>,
     right: Arc<dyn Hittable>,
@@ -29,10 +28,20 @@ impl Hittable for BVHNode {
 }
 
 impl BVHNode {
-    pub fn from_hittables(mut objects: Vec<Box<dyn Hittable>>) -> Arc<BVHNode> {
-        let comparator = &[compare_x, compare_y, compare_z]
-            .choose(&mut rand::thread_rng())
-            .unwrap();
+    pub fn from_hittables(objects: Vec<Box<dyn Hittable>>) -> Arc<BVHNode> {
+        Self::from_hittables_along_axis(objects, 0)
+    }
+
+    fn from_hittables_along_axis(
+        mut objects: Vec<Box<dyn Hittable>>,
+        axis: usize,
+    ) -> Arc<BVHNode> {
+        let comparator =
+            |a: &Box<dyn Hittable>, b: &Box<dyn Hittable>| -> Ordering {
+                let a_box = a.bounding_box();
+                let b_box = b.bounding_box();
+                a_box.cmp_axis(&b_box, axis)
+            };
 
         let num_objects = objects.len();
 
@@ -56,8 +65,14 @@ impl BVHNode {
                     let obj_right = objects.split_off(mid);
                     let obj_left = objects;
                     (
-                        BVHNode::from_hittables(obj_left),
-                        BVHNode::from_hittables(obj_right),
+                        BVHNode::from_hittables_along_axis(
+                            obj_left,
+                            (axis + 1) % 3,
+                        ),
+                        BVHNode::from_hittables_along_axis(
+                            obj_right,
+                            (axis + 1) % 3,
+                        ),
                     )
                 }
             };
@@ -65,22 +80,4 @@ impl BVHNode {
         let aabb = AABB::containing(left.bounding_box(), right.bounding_box());
         Arc::new(BVHNode { left, right, aabb })
     }
-}
-
-fn compare_x(a: &Box<dyn Hittable>, b: &Box<dyn Hittable>) -> Ordering {
-    let a_box = a.bounding_box();
-    let b_box = b.bounding_box();
-    a_box.cmp_axis(&b_box, 0)
-}
-
-fn compare_y(a: &Box<dyn Hittable>, b: &Box<dyn Hittable>) -> Ordering {
-    let a_box = a.bounding_box();
-    let b_box = b.bounding_box();
-    a_box.cmp_axis(&b_box, 1)
-}
-
-fn compare_z(a: &Box<dyn Hittable>, b: &Box<dyn Hittable>) -> Ordering {
-    let a_box = a.bounding_box();
-    let b_box = b.bounding_box();
-    a_box.cmp_axis(&b_box, 2)
 }

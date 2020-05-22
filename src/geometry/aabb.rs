@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::ops::Range;
 
 #[derive(Debug, Copy, Clone)]
-pub struct AABB {
+pub(super) struct AABB {
     min: Point,
     max: Point,
 }
