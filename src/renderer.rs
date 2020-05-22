@@ -30,12 +30,12 @@ pub fn render() {
                 100.0,
             ),
             Sphere::new(
-                Material::Metal(Color::new(0.8, 0.6, 0.2), 1.0),
+                Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
                 Point::new(1.0, 0.0, -1.0),
                 0.5,
             ),
             Sphere::new(
-                Material::Metal(Color::new(0.8, 0.8, 0.8), 0.3),
+                Material::Dielectric(1.5),
                 Point::new(-1.0, 0.0, -1.0),
                 0.5,
             ),
@@ -51,7 +51,7 @@ pub fn render() {
 
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || loop {
-        thread::sleep(std::time::Duration::from_millis(1000));
+        thread::sleep(std::time::Duration::from_millis(500));
         if let Err(_) = tx.send(()) {
             break;
         }

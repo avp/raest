@@ -101,26 +101,30 @@ impl Object for Sphere {
     ) -> Option<Hit> {
         let oc = ray.origin - self.center;
         // Solve the quadratic formula.
-        let (a, b, c) = (
-            ray.dir.dot(&ray.dir),
-            2.0 * oc.dot(&ray.dir),
-            oc.dot(&oc) - (self.radius.powi(2)),
+        let (a, half_b, c) = (
+            ray.dir.norm_squared(),
+            oc.dot(&ray.dir),
+            oc.norm_squared() - (self.radius * self.radius),
         );
-        let discriminant = b.powi(2) - (4.0 * a * c);
+        let discriminant = (half_b * half_b) - (a * c);
         if discriminant < 0.0 {
             None
         } else {
             // b^2 - 4ac > 0 ==> there is at least one root.
             // Subtract discriminant to find the smallest t such that
             // there's an intersection.
-            let t: f64 = (-b - discriminant.sqrt()) / (2.0 * a);
-            if range.contains(&t) {
-                let point = ray.origin + t * ray.dir;
-                let normal = (point - self.center).normalize();
-                Some(Hit::new(ray, normal, t, self.material))
+            let t1: f64 = (-half_b - discriminant.sqrt()) / a;
+            let t2: f64 = (-half_b + discriminant.sqrt()) / a;
+            let t = if range.contains(&t1) {
+                t1
+            } else if range.contains(&t2) {
+                t2
             } else {
-                None
-            }
+                return None;
+            };
+            let point = ray.at(t);
+            let normal = (point - self.center) * (1.0 / self.radius);
+            Some(Hit::new(ray, normal, t, self.material))
         }
     }
 }

@@ -10,3 +10,6 @@ edition = "2018"
 minifb = "0.16.0"
 nalgebra = "0.21.0"
 rand = {version = "0.7.3", features = ["small_rng"]}
+
+[profile.release]
+debug = true

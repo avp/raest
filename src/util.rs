@@ -5,16 +5,50 @@ use std::ops::Range;
 
 pub fn random_f64(range: Range<f64>) -> f64 {
     use rand::Rng;
-    (rand::thread_rng().gen::<f64>() * (range.end - range.start)) + range.start
+    rand::thread_rng().gen_range(range.start, range.end)
 }
 
 pub fn random_in_unit_sphere() -> Vector {
     let a = random_f64(0.0..2.0 * PI);
     let z = random_f64(-1.0..1.0);
-    let r = (1.0 - z.powi(2)).sqrt();
+    let r = (1.0 - z * z).sqrt();
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
 
-pub fn reflect(vec: Vector, norm: Vector) -> Vector {
-    vec - (2.0 * vec.dot(&norm) * norm)
+pub fn reflect(vec: Vector, n: Vector) -> Vector {
+    vec - (2.0 * vec.dot(&n) * n)
+}
+
+/// Refract vec and surface normal `n` according to the ratio of the IORs
+/// `eta`.
+pub fn refract(vec: Vector, n: Vector, eta: f64) -> Vector {
+    let cos_theta = (-vec).dot(&n);
+    let parallel = eta * (vec + cos_theta * n);
+    let perp = -((1.0 - parallel.norm_squared()).sqrt() * n);
+    parallel + perp
+}
+
+#[cfg(test)]
+#[test]
+fn tester() {
+    println!(
+        "{:?}",
+        refract(
+            Vector::new(1.0, 1.0, 0.0).normalize(),
+            Vector::new(0.0, -1.0, 0.0),
+            1.0 / 1.33333333
+        )
+    );
+}
+
+pub fn schlick(cosine: f64, ior: f64) -> f64 {
+    let r0 = (1.0 - ior) / (1.0 + ior);
+    let r0 = r0 * r0;
+    let one_minus_cos = 1.0 - cosine;
+    r0 + (1.0 - r0)
+        * (one_minus_cos
+            * one_minus_cos
+            * one_minus_cos
+            * one_minus_cos
+            * one_minus_cos)
 }
