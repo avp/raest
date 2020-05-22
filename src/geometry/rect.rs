@@ -1,8 +1,10 @@
 use super::*;
 use crate::material::Material;
+use serde::{Deserialize, Serialize};
 use std::ops::Range;
+use std::sync::Arc;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum RectAxis {
     XY,
     XZ,
@@ -39,7 +41,7 @@ impl RectAxis {
 }
 
 pub struct Rect {
-    material: Material,
+    material: Arc<Material>,
     axis: RectAxis,
     p1: Point,
     p2: Point,
@@ -47,7 +49,7 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(
-        material: Material,
+        material: Arc<Material>,
         axis: RectAxis,
         p1: (f64, f64),
         p2: (f64, f64),

@@ -1,0 +1,102 @@
+[camera]
+from = [278, 278, -800]
+at = [278, 278, 0]
+up = [0, 1, 0]
+dist = 10.0
+vfov = 40.0
+aperture = 0.0
+
+[textures.red]
+kind = "Solid"
+color = [0.65, 0.05, 0.05]
+[materials.red]
+kind = "Lambertian"
+texture = "red"
+
+[textures.green]
+kind = "Solid"
+color = [0.12, 0.45, 0.15]
+[materials.green]
+kind = "Lambertian"
+texture = "green"
+
+[textures.white]
+kind = "Solid"
+color = [0.73, 0.73, 0.73]
+[materials.white]
+kind = "Lambertian"
+texture = "white"
+
+[textures.light]
+kind = "Solid"
+color = [15, 15, 15]
+[materials.light]
+kind = "Emission"
+texture = "light"
+
+[[objects]]
+kind = "Rect"
+material = "green"
+axis = "YZ"
+start = [0, 0]
+end = [555, 555]
+k = 555
+[[objects]]
+kind = "Rect"
+material = "red"
+axis = "YZ"
+start = [0, 0]
+end = [555, 555]
+k = 0
+
+[[objects]]
+kind = "Rect"
+material = "light"
+axis = "XZ"
+start = [213, 227]
+end = [343, 332]
+k = 554
+
+[[objects]]
+kind = "Rect"
+material = "white"
+axis = "XZ"
+start = [0, 0]
+end = [555, 555]
+k = 0
+[[objects]]
+kind = "Rect"
+material = "white"
+axis = "XZ"
+start = [0, 0]
+end = [555, 555]
+k = 555
+[[objects]]
+kind = "Rect"
+material = "white"
+axis = "XY"
+start = [0, 0]
+end = [555, 555]
+k = 555
+[[objects]]
+kind = "Rect"
+material = "white"
+axis = "XY"
+start = [0, 0]
+end = [555, 555]
+k = 555
+
+[[objects]]
+kind = "Block"
+material = "white"
+start = [0, 0, 0]
+end = [165, 333, 165]
+rotate = [0, 15, 0]
+translate = [265, 0, 295]
+[[objects]]
+kind = "Block"
+material = "white"
+start = [0, 0, 0]
+end = [165, 165, 165]
+rotate = [0, -18, 0]
+translate = [130, 0, 65]

@@ -9,7 +9,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(material: Material, p1: Point, p2: Point) -> Box<Block> {
+    pub fn new(material: Arc<Material>, p1: Point, p2: Point) -> Box<Block> {
         let mut sides: Vec<Box<dyn Hittable>> = vec![];
         sides.push(Rect::new(
             material.clone(),
@@ -49,7 +49,7 @@ impl Block {
             p1.x,
         ));
         sides.push(Rect::new(
-            material,
+            material.clone(),
             RectAxis::YZ,
             (p1.y, p1.z),
             (p2.y, p2.z),

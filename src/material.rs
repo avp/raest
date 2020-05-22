@@ -2,13 +2,14 @@ use crate::color::Color;
 use crate::geometry::{Hit, Ray};
 use crate::texture::Texture;
 use crate::util::*;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum Material {
-    Lambertian(Texture),
+    Lambertian(Arc<Texture>),
     Metal(Color, f64),
     Dielectric(f64),
-    Emission(Texture),
+    Emission(Arc<Texture>),
 }
 
 impl Material {

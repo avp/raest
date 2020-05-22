@@ -2,15 +2,20 @@ use super::{Hit, Hittable, Point, Ray, Vector, AABB};
 use crate::material::Material;
 use std::f64::consts::PI;
 use std::ops::Range;
+use std::sync::Arc;
 
 pub struct Sphere {
-    material: Material,
+    material: Arc<Material>,
     center: Point,
     radius: f64,
 }
 
 impl Sphere {
-    pub fn new(material: Material, center: Point, radius: f64) -> Box<Sphere> {
+    pub fn new(
+        material: Arc<Material>,
+        center: Point,
+        radius: f64,
+    ) -> Box<Sphere> {
         Box::new(Sphere {
             material,
             center,

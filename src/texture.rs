@@ -2,11 +2,12 @@ use crate::color::Color;
 use crate::geometry::*;
 use crate::util::*;
 use image::{DynamicImage, GenericImageView, Pixel};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum Texture {
     Solid(Color),
-    Checker(Box<Texture>, Box<Texture>),
+    Checker(Arc<Texture>, Arc<Texture>),
     Image(DynamicImage),
 }
 
