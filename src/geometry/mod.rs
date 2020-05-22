@@ -45,8 +45,11 @@ impl Scene {
     #[allow(dead_code)]
     pub fn random(n: u32) -> Scene {
         let mut objects: Vec<Box<dyn Hittable>> = vec![];
-        let ground_material =
-            Material::Lambertian(Texture::Solid(Color::new(0.5, 0.5, 0.5)));
+        let ground_texture = Texture::Checker(
+            Box::new(Texture::Solid(Color::new(0.2, 0.3, 0.1))),
+            Box::new(Texture::Solid(Color::new(0.9, 0.9, 0.9))),
+        );
+        let ground_material = Material::Lambertian(ground_texture);
         objects.push(Sphere::new(
             ground_material,
             Point::new(0.0, -1000.0, 0.0),
