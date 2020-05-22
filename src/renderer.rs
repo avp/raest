@@ -17,7 +17,8 @@ pub fn render(config: Config) {
     let mut window = make_window();
     let buf = Arc::new(RwLock::new(make_buffer()));
 
-    let scene = Scene::random(10);
+    // let scene = Scene::random(10);
+    let scene = Scene::cornell_box();
 
     {
         let buf = buf.clone();

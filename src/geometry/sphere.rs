@@ -4,9 +4,9 @@ use std::f64::consts::PI;
 use std::ops::Range;
 
 pub struct Sphere {
-    pub material: Material,
-    pub center: Point,
-    pub radius: f64,
+    material: Material,
+    center: Point,
+    radius: f64,
 }
 
 impl Sphere {

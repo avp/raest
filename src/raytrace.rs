@@ -51,11 +51,18 @@ pub fn raytrace<'a>(
     im_height: usize,
 ) {
     let aspect_ratio: f64 = im_width as f64 / im_height as f64;
-    let from = Point::new(13.0, 2.0, 3.0);
-    let at = Point::new(0.0, 0.0, 0.0);
+
+    // let from = Point::new(13.0, 2.0, 3.0);
+    // let at = Point::new(0.0, 0.0, 0.0);
+    // let up = Vector::new(0.0, 1.0, 0.0);
+    // let dist = 10.0;
+    // let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
+
+    let from = Point::new(278.0, 278.0, -800.0);
+    let at = Point::new(278.0, 278.0, 0.0);
     let up = Vector::new(0.0, 1.0, 0.0);
     let dist = 10.0;
-    let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
+    let camera = &Camera::new(from, at, up, 40.0, aspect_ratio, 0.0, dist);
 
     let start = Instant::now();
 
@@ -108,15 +115,19 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
     }
     match scene.hit(ray, 0.0001..f64::INFINITY) {
         Some(hit) => {
-            let (outbound, attenuation) = hit.material.scatter(&ray, &hit);
-            attenuation.component_mul(&ray_color(scene, outbound, depth + 1))
+            let emit = hit.material.emitted(&hit);
+            match hit.material.scatter(&ray, &hit) {
+                None => emit,
+                Some((outbound, attenuation)) => {
+                    emit + attenuation.component_mul(&ray_color(
+                        scene,
+                        outbound,
+                        depth + 1,
+                    ))
+                }
+            }
         }
-        None => {
-            let dir = ray.dir.normalize();
-            let t: f64 = 0.5 * (dir.y + 1.0);
-            ((1.0 - t) * Color::new(1.0, 1.0, 1.0))
-                + (t * Color::new(0.5, 0.7, 1.0))
-        }
+        None => scene.background,
     }
 }
 

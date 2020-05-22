@@ -3,6 +3,7 @@ use crate::geometry::*;
 use crate::util::*;
 use image::{DynamicImage, GenericImageView, Pixel};
 
+#[derive(Clone)]
 pub enum Texture {
     Solid(Color),
     Checker(Box<Texture>, Box<Texture>),
