@@ -3,11 +3,21 @@ use crate::util::*;
 use nalgebra::{Point3, Vector3};
 use std::ops::{Bound, RangeBounds};
 
+pub use crate::aabb::AABB;
 pub use crate::material::Material;
 pub use crate::ray::Ray;
 
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
+
+pub trait Hittable {
+    fn bounding_box(&self) -> AABB;
+    fn hit<Bounds: RangeBounds<f64>>(
+        &self,
+        ray: Ray,
+        range: Bounds,
+    ) -> Option<Hit>;
+}
 
 #[derive(Debug)]
 pub struct Scene {
@@ -23,7 +33,7 @@ fn bound_cloned<T: Clone>(b: Bound<&T>) -> Bound<T> {
 }
 
 impl Scene {
-    pub fn random() -> Scene {
+    pub fn random(n: u32) -> Scene {
         let mut spheres = vec![];
         let ground_material = Material::Lambertian(Color::new(0.5, 0.5, 0.5));
         spheres.push(Sphere::new(
@@ -32,8 +42,10 @@ impl Scene {
             1000.0,
         ));
 
-        for a in -11..11 {
-            for b in -11..11 {
+        let count = n as i64;
+
+        for a in -count..count {
+            for b in -count..count {
                 let mat_rand = random_f64(0.0..1.0);
                 let center = Point::new(
                     a as f64 + 0.9 * random_f64(0.0..1.0),
@@ -126,14 +138,6 @@ impl Hit {
     }
 }
 
-pub trait Object {
-    fn hit<Bounds: RangeBounds<f64>>(
-        &self,
-        ray: Ray,
-        range: Bounds,
-    ) -> Option<Hit>;
-}
-
 #[derive(Debug, Copy, Clone)]
 pub struct Sphere {
     pub material: Material,
@@ -151,7 +155,14 @@ impl Sphere {
     }
 }
 
-impl Object for Sphere {
+impl Hittable for Sphere {
+    fn bounding_box(&self) -> AABB {
+        AABB::new(
+            self.center - Vector::repeat(self.radius),
+            self.center + Vector::repeat(self.radius),
+        )
+    }
+
     fn hit<Bounds: RangeBounds<f64>>(
         &self,
         ray: Ray,

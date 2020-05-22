@@ -1,5 +1,6 @@
 #![feature(clamp)]
 
+mod aabb;
 mod geometry;
 mod material;
 mod ray;
