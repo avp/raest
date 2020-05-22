@@ -62,6 +62,7 @@ struct ObjectDesc {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SceneDesc {
+    background: Color,
     camera: CameraDesc,
     textures: HashMap<String, TextureDesc>,
     materials: HashMap<String, MaterialDesc>,
@@ -145,7 +146,7 @@ fn transform(desc: &SceneDesc) -> Option<Scene> {
         result.push(hittable);
     }
 
-    Some(Scene::from_objects(Color::zeros(), result))
+    Some(Scene::from_objects(desc.background, result))
 }
 
 pub(super) fn parse(config: &Config) -> (Scene, Camera) {
