@@ -1,10 +1,10 @@
 use super::*;
 use nalgebra::Rotation3;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct CameraDesc {
     from: Point,
     at: Point,
@@ -14,14 +14,14 @@ struct CameraDesc {
     aperture: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 enum TextureDesc {
     Solid { color: Color },
     Checker { texture1: String, texture2: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 enum MaterialDesc {
     Lambertian { texture: String },
@@ -30,7 +30,7 @@ enum MaterialDesc {
     Emission { texture: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 enum GeomDesc {
     Sphere {
@@ -52,7 +52,7 @@ enum GeomDesc {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct ObjectDesc {
     #[serde(flatten)]
     geometry: GeomDesc,
@@ -60,7 +60,7 @@ struct ObjectDesc {
     translate: Option<Vector>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct SceneDesc {
     background: Color,
     camera: CameraDesc,
