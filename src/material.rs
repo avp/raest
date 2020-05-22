@@ -3,7 +3,6 @@ use crate::geometry::{Hit, Ray};
 use crate::texture::Texture;
 use crate::util::*;
 
-#[derive(Debug)]
 pub enum Material {
     Lambertian(Texture),
     Metal(Color, f64),

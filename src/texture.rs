@@ -1,10 +1,11 @@
 use crate::color::Color;
 use crate::geometry::*;
+use image::DynamicImage;
 
-#[derive(Debug)]
 pub enum Texture {
     Solid(Color),
     Checker(Box<Texture>, Box<Texture>),
+    Image(DynamicImage),
 }
 
 impl Texture {
@@ -19,6 +20,9 @@ impl Texture {
                 } else {
                     even.value((u, v), point)
                 }
+            }
+            Texture::Image(img) => {
+                unimplemented!();
             }
         }
     }

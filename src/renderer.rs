@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::geometry::Scene;
 use crate::raytrace;
 
@@ -12,16 +13,16 @@ const WIN_HEIGHT: usize = 360;
 
 pub type Buffer = Vec<u32>;
 
-pub fn render() {
+pub fn render(config: Config) {
     let mut window = make_window();
     let buf = Arc::new(RwLock::new(make_buffer()));
 
     let scene = Scene::random(10);
 
     {
-        let buf = Arc::clone(&buf);
+        let buf = buf.clone();
         thread::spawn(move || {
-            raytrace::raytrace(&scene, buf, WIN_WIDTH, WIN_HEIGHT);
+            raytrace::raytrace(config, &scene, buf, WIN_WIDTH, WIN_HEIGHT);
         });
     }
 

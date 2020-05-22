@@ -1,5 +1,8 @@
 #![feature(clamp)]
 
+use structopt::StructOpt;
+
+mod config;
 mod geometry;
 mod material;
 mod raytrace;
@@ -13,5 +16,6 @@ mod color {
 }
 
 fn main() {
-    renderer::render();
+    let config = config::Config::from_args();
+    renderer::render(config);
 }

@@ -3,7 +3,6 @@ use crate::material::Material;
 use std::f64::consts::PI;
 use std::ops::Range;
 
-#[derive(Debug)]
 pub struct Sphere {
     pub material: Material,
     pub center: Point,

@@ -1,9 +1,10 @@
 use crate::color::Color;
+use crate::config::Config;
 use crate::geometry::*;
 use crate::renderer::Buffer;
 use crate::util::*;
-
 use crossbeam::thread;
+use image::{ImageBuffer, ImageFormat, Rgb};
 use std::ops::Range;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -74,10 +75,10 @@ impl Camera {
     }
 }
 
-const NUM_SAMPLES: u32 = 50;
 const MAX_DEPTH: u32 = 25;
 
 fn raytrace_rows(
+    config: &Config,
     scene: &Scene,
     camera: &Camera,
     buf: Arc<RwLock<Buffer>>,
@@ -89,7 +90,7 @@ fn raytrace_rows(
     for r in rows {
         for (c, result) in row.iter_mut().enumerate() {
             let mut color_sum = Color::zeros();
-            for _ in 0..NUM_SAMPLES {
+            for _ in 0..config.samples {
                 let u =
                     (c as f64 + random_f64(0.0..1.0)) / (im_width as f64 - 1.0);
                 let v = ((im_height - r) as f64 + random_f64(0.0..1.0))
@@ -97,7 +98,7 @@ fn raytrace_rows(
                 let ray = camera.get_ray(u, v);
                 color_sum += ray_color(scene, ray, 0);
             }
-            *result = write_color(color_sum);
+            *result = write_color(config, color_sum);
         }
         {
             let mut b = buf.write().unwrap();
@@ -107,6 +108,7 @@ fn raytrace_rows(
 }
 
 pub fn raytrace<'a>(
+    config: Config,
     scene: &'a Scene,
     buf: Arc<RwLock<Buffer>>,
     im_width: usize,
@@ -119,15 +121,16 @@ pub fn raytrace<'a>(
     let dist = 10.0;
     let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
-    const NUM_THREADS: usize = 8;
-    let rows_per = (im_height / NUM_THREADS) + 1;
+    let rows_per = (im_height / config.threads) + 1;
     thread::scope(|scope| {
-        for i in 0..NUM_THREADS {
+        let config = &config;
+        for i in 0..config.threads {
             let buf = buf.clone();
             let start = i * rows_per;
             let end = usize::min(im_height, (i + 1) * rows_per);
             scope.spawn(move |_| {
                 raytrace_rows(
+                    config,
                     scene,
                     camera,
                     buf,
@@ -139,6 +142,23 @@ pub fn raytrace<'a>(
         }
     })
     .unwrap();
+
+    if let Some(output) = config.output {
+        let buf = buf.read().unwrap();
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(
+            im_width as u32,
+            im_height as u32,
+            |c, r| -> Rgb<u8> {
+                let pix = buf[(r * im_width as u32 + c) as usize];
+                let red = ((pix >> 16) & 0xff) as u8;
+                let green = ((pix >> 8) & 0xff) as u8;
+                let blue = (pix & 0xff) as u8;
+                Rgb([red, green, blue])
+            },
+        );
+        img.save_with_format(&output, ImageFormat::Png).unwrap();
+        println!("Output saved as: {}", output.display());
+    }
 }
 
 fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
@@ -159,12 +179,12 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
     }
 }
 
-fn write_color(color: Color) -> u32 {
-    fn correct(x: f64) -> u32 {
-        let scale = 1.0 / NUM_SAMPLES as f64;
+fn write_color(config: &Config, color: Color) -> u32 {
+    let correct = |x: f64| -> u32 {
+        let scale = 1.0 / config.samples as f64;
         const GAMMA: f64 = 2.0;
         let x2 = (scale * x).powf(1.0 / GAMMA).clamp(0.0, 0.9999);
         (x2 * 256.0f64) as u8 as u32
-    }
+    };
     (correct(color[0]) << 16) | (correct(color[1]) << 8) | correct(color[2])
 }

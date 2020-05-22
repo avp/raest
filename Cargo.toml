@@ -11,6 +11,8 @@ minifb = "0.16.0"
 nalgebra = "0.21.0"
 crossbeam = "0.7.3"
 rand = {version = "0.7.3", features = ["small_rng"]}
+image = "0.23.4"
+structopt = "0.3.14"
 
 [profile.release]
 debug = true

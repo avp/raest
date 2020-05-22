@@ -139,7 +139,6 @@ impl Scene {
     }
 }
 
-#[derive(Debug)]
 pub struct Hit<'obj> {
     pub point: Point,
     pub normal: Vector,
