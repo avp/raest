@@ -55,7 +55,7 @@ pub fn render() {
 
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || loop {
-        thread::sleep(std::time::Duration::from_millis(1000));
+        thread::sleep(std::time::Duration::from_millis(500));
         if let Err(_) = tx.send(()) {
             break;
         }

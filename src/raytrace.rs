@@ -3,6 +3,8 @@ use crate::geometry::*;
 use crate::renderer::Buffer;
 use crate::util::*;
 
+use crossbeam::thread;
+use std::ops::Range;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -72,11 +74,40 @@ impl Camera {
     }
 }
 
-const NUM_SAMPLES: u32 = 25;
+const NUM_SAMPLES: u32 = 50;
 const MAX_DEPTH: u32 = 25;
 
-pub fn raytrace(
+fn raytrace_rows(
     scene: &Scene,
+    camera: &Camera,
+    buf: Arc<RwLock<Buffer>>,
+    im_width: usize,
+    im_height: usize,
+    rows: Range<usize>,
+) {
+    let mut row = vec![0; im_width];
+    for r in rows {
+        for c in 0..im_width {
+            let mut color_sum = Color::zeros();
+            for _ in 0..NUM_SAMPLES {
+                let u =
+                    (c as f64 + random_f64(0.0..1.0)) / (im_width as f64 - 1.0);
+                let v = ((im_height - r) as f64 + random_f64(0.0..1.0))
+                    / (im_height as f64 - 1.0);
+                let ray = camera.get_ray(u, v);
+                color_sum += ray_color(scene, ray, 0);
+            }
+            row[c] = write_color(color_sum);
+        }
+        {
+            let mut b = buf.write().unwrap();
+            b[r * im_width..(r + 1) * im_width].clone_from_slice(&row);
+        }
+    }
+}
+
+pub fn raytrace<'a>(
+    scene: &'a Scene,
     buf: Arc<RwLock<Buffer>>,
     im_width: usize,
     im_height: usize,
@@ -86,29 +117,28 @@ pub fn raytrace(
     let at = Point::new(0.0, 0.0, 0.0);
     let up = Vector::new(0.0, 1.0, 0.0);
     let dist = 10.0;
-    let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
+    let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
-    let mut row = vec![Color::new(0.0, 0.0, 0.0); im_width];
-    for r in 0..im_height {
-        row.clear();
-        row.resize(im_width, Color::new(0.0, 0.0, 0.0));
-        for c in 0..im_width {
-            for _ in 0..NUM_SAMPLES {
-                let u =
-                    (c as f64 + random_f64(0.0..1.0)) / (im_width as f64 - 1.0);
-                let v = ((im_height - r) as f64 + random_f64(0.0..1.0))
-                    / (im_height as f64 - 1.0);
-                let ray = camera.get_ray(u, v);
-                let color = ray_color(scene, ray, 0);
-                row[c] += color;
-            }
+    const NUM_THREADS: usize = 8;
+    let rows_per = (im_height / NUM_THREADS) + 1;
+    thread::scope(|scope| {
+        for i in 0..NUM_THREADS {
+            let buf = buf.clone();
+            let start = i * rows_per;
+            let end = usize::min(im_height, (i + 1) * rows_per);
+            scope.spawn(move |_| {
+                raytrace_rows(
+                    scene,
+                    camera,
+                    buf,
+                    im_width,
+                    im_height,
+                    start..end,
+                );
+            });
         }
-
-        let mut b = buf.write().unwrap();
-        for c in 0..im_width {
-            b[r * im_width + c] = write_color(row[c]);
-        }
-    }
+    })
+    .unwrap();
 }
 
 fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
