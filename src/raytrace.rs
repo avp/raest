@@ -115,7 +115,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
     if depth > MAX_DEPTH {
         return Color::zeros();
     }
-    match scene.hit(ray, 0.0001..) {
+    match scene.hit(ray, &(0.0001..)) {
         Some(hit) => {
             let (outbound, attenuation) = hit.material.scatter(&ray, &hit);
             attenuation.component_mul(&ray_color(scene, outbound, depth + 1))

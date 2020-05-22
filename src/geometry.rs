@@ -10,13 +10,30 @@ pub use crate::ray::Ray;
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
+pub trait TimeBounds {
+    fn start_bound(&self) -> Bound<&f64>;
+    fn end_bound(&self) -> Bound<&f64>;
+    fn contains(&self, v: &f64) -> bool;
+}
+
+impl<T> TimeBounds for T
+where
+    T: RangeBounds<f64>,
+{
+    fn start_bound(&self) -> Bound<&f64> {
+        RangeBounds::start_bound(self)
+    }
+    fn end_bound(&self) -> Bound<&f64> {
+        RangeBounds::end_bound(self)
+    }
+    fn contains(&self, v: &f64) -> bool {
+        RangeBounds::contains(self, v)
+    }
+}
+
 pub trait Hittable {
     fn bounding_box(&self) -> AABB;
-    fn hit<Bounds: RangeBounds<f64>>(
-        &self,
-        ray: Ray,
-        range: Bounds,
-    ) -> Option<Hit>;
+    fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit>;
 }
 
 #[derive(Debug)]
@@ -91,17 +108,14 @@ impl Scene {
 
         Scene { spheres }
     }
-    pub fn hit<Bounds: RangeBounds<f64>>(
-        &self,
-        ray: Ray,
-        range: Bounds,
-    ) -> Option<Hit> {
+    pub fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit> {
         let mut res = None;
         let start: Bound<f64> = bound_cloned(range.start_bound());
         let mut end: Bound<f64> = bound_cloned(range.end_bound());
 
         for &sphere in &self.spheres {
-            match sphere.hit(ray, (start, end)) {
+            let bounds: &dyn TimeBounds = &(start, end);
+            match sphere.hit(ray, &(start, end)) {
                 None => {}
                 Some(hit) => {
                     end = Bound::Excluded(hit.t);
@@ -163,11 +177,7 @@ impl Hittable for Sphere {
         )
     }
 
-    fn hit<Bounds: RangeBounds<f64>>(
-        &self,
-        ray: Ray,
-        range: Bounds,
-    ) -> Option<Hit> {
+    fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit> {
         let oc = ray.origin - self.center;
         // Solve the quadratic formula.
         let (a, half_b, c) = (
