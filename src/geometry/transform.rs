@@ -1,5 +1,5 @@
 use super::*;
-use nalgebra::Rotation3;
+use nalgebra::{Rotation3, UnitQuaternion};
 use std::ops::Range;
 
 pub struct Translate {
@@ -38,7 +38,7 @@ impl Hittable for Translate {
 
 pub struct Rotate {
     target: Box<dyn Hittable>,
-    offset: Rotation3<f64>,
+    offset: UnitQuaternion<f64>,
 }
 
 impl Rotate {
@@ -46,7 +46,10 @@ impl Rotate {
         target: Box<dyn Hittable>,
         offset: Rotation3<f64>,
     ) -> Box<Rotate> {
-        Box::new(Rotate { target, offset })
+        Box::new(Rotate {
+            target,
+            offset: UnitQuaternion::from_rotation_matrix(&offset),
+        })
     }
 }
 
@@ -89,7 +92,7 @@ impl Hittable for Rotate {
             None => None,
             Some(hit) => Some(Hit::new(
                 ray,
-                self.offset.transform_vector(&hit.normal),
+                Unit::new_unchecked(self.offset.transform_vector(&*hit.normal)),
                 hit.t,
                 hit.material,
                 hit.uv,

@@ -21,6 +21,15 @@ impl RectAxis {
         }
     }
 
+    fn unit(&self) -> Unit<Vector> {
+        use RectAxis::*;
+        match self {
+            XY => Vector::z_axis(),
+            XZ => Vector::y_axis(),
+            YZ => Vector::x_axis(),
+        }
+    }
+
     fn k(&self, vector: Vector) -> f64 {
         use RectAxis::*;
         match self {
@@ -94,12 +103,6 @@ impl Hittable for Rect {
             .axis
             .uv((p - self.p1).component_div(&(self.p2 - self.p1)));
 
-        Some(Hit::new(
-            ray,
-            self.axis.point((0.0, 0.0), 1.0).coords,
-            t,
-            &self.material,
-            uv,
-        ))
+        Some(Hit::new(ray, self.axis.unit(), t, &self.material, uv))
     }
 }

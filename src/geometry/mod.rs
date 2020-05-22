@@ -15,7 +15,7 @@ use crate::config::Config;
 use crate::material::Material;
 use crate::texture::Texture;
 use crate::util::*;
-use nalgebra::{Point3, Vector3};
+use nalgebra::{Point3, Unit, Vector3};
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -166,7 +166,7 @@ impl Scene {
 
 pub struct Hit<'obj> {
     pub point: Point,
-    pub normal: Vector,
+    pub normal: Unit<Vector>,
     pub t: f64,
     pub front_facing: bool,
     pub material: &'obj Material,
@@ -177,7 +177,7 @@ impl<'obj> Hit<'obj> {
     #[inline]
     fn new(
         ray: Ray,
-        normal: Vector,
+        normal: Unit<Vector>,
         t: f64,
         material: &'obj Material,
         uv: (f64, f64),

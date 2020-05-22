@@ -1,6 +1,7 @@
 use crate::geometry::*;
 use std::f64::consts::PI;
 
+use nalgebra::Unit;
 use std::ops::Range;
 
 pub fn random_f64(range: Range<f64>) -> f64 {
@@ -14,6 +15,13 @@ pub fn random_in_unit_disc() -> Vector {
     Vector::new(r * theta.cos(), r * theta.sin(), 0.0)
 }
 
+pub fn random_unit_vector() -> Vector {
+    let a = random_f64(0.0..2.0 * PI);
+    let z = random_f64(-1.0..1.0);
+    let r = (1.0 - z * z).sqrt();
+    Vector::new(r * a.cos(), r * a.sin(), z)
+}
+
 pub fn random_in_unit_sphere() -> Vector {
     let a = random_f64(0.0..2.0 * PI);
     let z = random_f64(-1.0..1.0);
@@ -21,16 +29,16 @@ pub fn random_in_unit_sphere() -> Vector {
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
 
-pub fn reflect(vec: Vector, n: Vector) -> Vector {
-    vec - (2.0 * vec.dot(&n) * n)
+pub fn reflect(vec: Vector, n: Unit<Vector>) -> Vector {
+    vec - (2.0 * vec.dot(&n) * *n)
 }
 
 /// Refract vec and surface normal `n` according to the ratio of the IORs
 /// `eta`.
-pub fn refract(vec: Vector, n: Vector, eta: f64) -> Vector {
+pub fn refract(vec: Vector, n: Unit<Vector>, eta: f64) -> Vector {
     let cos_theta = (-vec).dot(&n);
-    let parallel = eta * (vec + cos_theta * n);
-    let perp = -((1.0 - parallel.norm_squared()).sqrt() * n);
+    let parallel = eta * (vec + cos_theta * *n);
+    let perp = -((1.0 - parallel.norm_squared()).sqrt() * *n);
     parallel + perp
 }
 
@@ -41,7 +49,7 @@ fn tester() {
         "{:?}",
         refract(
             Vector::new(1.0, 1.0, 0.0).normalize(),
-            Vector::new(0.0, -1.0, 0.0),
+            -Vector::y_axis(),
             1.0 / 1.33333333
         )
     );

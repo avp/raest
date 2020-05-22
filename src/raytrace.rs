@@ -104,12 +104,13 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
             let emit = hit.material.emitted(&hit);
             match hit.material.scatter(&ray, &hit) {
                 None => emit,
-                Some((outbound, attenuation)) => {
-                    emit + attenuation.component_mul(&ray_color(
-                        scene,
-                        outbound,
-                        depth + 1,
-                    ))
+                Some(scatter) => {
+                    let scatter_pdf =
+                        hit.material.scatter_pdf(ray, scatter.ray, &hit);
+                    let color = ray_color(scene, scatter.ray, depth + 1);
+                    emit + scatter.albedo.component_mul(&color)
+                        * scatter_pdf
+                        * scatter.pdf.recip()
                 }
             }
         }

@@ -1,5 +1,6 @@
 use super::{Hit, Hittable, Point, Ray, Vector, AABB};
 use crate::material::Material;
+use nalgebra::Unit;
 use std::f64::consts::PI;
 use std::ops::Range;
 use std::sync::Arc;
@@ -58,13 +59,15 @@ impl Hittable for Sphere {
                 return None;
             };
             let point = ray.at(t);
-            let normal = (point - self.center) * (1.0 / self.radius);
+            let normal = Unit::new_unchecked(
+                (point - self.center) * self.radius.recip(),
+            );
             Some(Hit::new(
                 ray,
                 normal,
                 t,
                 &self.material,
-                self.get_uv(normal),
+                self.get_uv(*normal),
             ))
         }
     }
