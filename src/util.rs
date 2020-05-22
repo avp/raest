@@ -8,6 +8,12 @@ pub fn random_f64(range: Range<f64>) -> f64 {
     rand::thread_rng().gen_range(range.start, range.end)
 }
 
+pub fn random_in_unit_disc() -> Vector {
+    let theta = random_f64(0.0..2.0 * PI);
+    let r = random_f64(0.0..1.0);
+    Vector::new(r * theta.cos(), r * theta.sin(), 0.0)
+}
+
 pub fn random_in_unit_sphere() -> Vector {
     let a = random_f64(0.0..2.0 * PI);
     let z = random_f64(-1.0..1.0);
