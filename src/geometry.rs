@@ -171,8 +171,9 @@ impl Object for Sphere {
             // b^2 - 4ac > 0 ==> there is at least one root.
             // Subtract discriminant to find the smallest t such that
             // there's an intersection.
-            let t1: f64 = (-half_b - discriminant.sqrt()) / a;
-            let t2: f64 = (-half_b + discriminant.sqrt()) / a;
+            let sqrt_disc = discriminant.sqrt();
+            let t1: f64 = (-half_b - sqrt_disc) / a;
+            let t2: f64 = (-half_b + sqrt_disc) / a;
             let t = if range.contains(&t1) {
                 t1
             } else if range.contains(&t2) {
