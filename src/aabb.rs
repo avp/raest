@@ -1,7 +1,7 @@
 use crate::geometry::*;
 use std::ops::Range;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct AABB {
     a: Point,
     b: Point,

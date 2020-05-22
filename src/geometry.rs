@@ -1,7 +1,7 @@
 use crate::color::Color;
 use crate::util::*;
 use nalgebra::{Point3, Vector3};
-use std::ops::{Bound, RangeBounds};
+use std::ops::Range;
 
 pub use crate::aabb::AABB;
 pub use crate::material::Material;
@@ -10,43 +10,14 @@ pub use crate::ray::Ray;
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
-pub trait TimeBounds {
-    fn start_bound(&self) -> Bound<&f64>;
-    fn end_bound(&self) -> Bound<&f64>;
-    fn contains(&self, v: &f64) -> bool;
-}
-
-impl<T> TimeBounds for T
-where
-    T: RangeBounds<f64>,
-{
-    fn start_bound(&self) -> Bound<&f64> {
-        RangeBounds::start_bound(self)
-    }
-    fn end_bound(&self) -> Bound<&f64> {
-        RangeBounds::end_bound(self)
-    }
-    fn contains(&self, v: &f64) -> bool {
-        RangeBounds::contains(self, v)
-    }
-}
-
 pub trait Hittable {
     fn bounding_box(&self) -> AABB;
-    fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit>;
+    fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
 }
 
 #[derive(Debug)]
 pub struct Scene {
     pub spheres: Vec<Sphere>,
-}
-
-fn bound_cloned<T: Clone>(b: Bound<&T>) -> Bound<T> {
-    match b {
-        Bound::Unbounded => Bound::Unbounded,
-        Bound::Included(x) => Bound::Included(x.clone()),
-        Bound::Excluded(x) => Bound::Excluded(x.clone()),
-    }
 }
 
 impl Scene {
@@ -108,17 +79,16 @@ impl Scene {
 
         Scene { spheres }
     }
-    pub fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit> {
+    pub fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
         let mut res = None;
-        let start: Bound<f64> = bound_cloned(range.start_bound());
-        let mut end: Bound<f64> = bound_cloned(range.end_bound());
+        let start: f64 = range.start;
+        let mut end: f64 = range.end;
 
         for &sphere in &self.spheres {
-            let bounds: &dyn TimeBounds = &(start, end);
-            match sphere.hit(ray, &(start, end)) {
+            match sphere.hit(ray, start..end) {
                 None => {}
                 Some(hit) => {
-                    end = Bound::Excluded(hit.t);
+                    end = hit.t;
                     res = Some(hit);
                 }
             }
@@ -177,7 +147,7 @@ impl Hittable for Sphere {
         )
     }
 
-    fn hit(&self, ray: Ray, range: &dyn TimeBounds) -> Option<Hit> {
+    fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
         let oc = ray.origin - self.center;
         // Solve the quadratic formula.
         let (a, half_b, c) = (
