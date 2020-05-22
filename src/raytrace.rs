@@ -72,7 +72,7 @@ impl Camera {
     }
 }
 
-const NUM_SAMPLES: u32 = 50;
+const NUM_SAMPLES: u32 = 25;
 const MAX_DEPTH: u32 = 25;
 
 pub fn raytrace(

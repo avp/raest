@@ -31,8 +31,7 @@ impl AABB {
         for dim in 0..self.min.len() {
             let t0 = (self.min[dim] - ray.origin[dim]) * (1.0 / ray.dir[dim]);
             let t1 = (self.max[dim] - ray.origin[dim]) * (1.0 / ray.dir[dim]);
-            let t_in = f64::min(t0, t1);
-            let t_out = f64::max(t0, t1);
+            let (t_in, t_out) = if t0 < t1 { (t0, t1) } else { (t1, t0) };
             range.start = f64::max(range.start, t_in);
             range.end = f64::min(range.end, t_out);
             if range.end <= range.start {
