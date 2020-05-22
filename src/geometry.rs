@@ -1,7 +1,9 @@
+use crate::bvh::BVHNode;
 use crate::color::Color;
 use crate::util::*;
 use nalgebra::{Point3, Vector3};
 use std::ops::Range;
+use std::sync::Arc;
 
 pub use crate::aabb::AABB;
 pub use crate::material::Material;
@@ -10,21 +12,28 @@ pub use crate::ray::Ray;
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
-pub trait Hittable {
+pub trait Hittable: Send + Sync {
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
 }
 
-#[derive(Debug)]
 pub struct Scene {
-    pub spheres: Vec<Sphere>,
+    bvh: Arc<BVHNode>,
 }
 
 impl Scene {
+    #[allow(dead_code)]
+    pub fn from_objects(objects: Vec<Box<dyn Hittable>>) -> Scene {
+        Scene {
+            bvh: BVHNode::from_hittables(objects),
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn random(n: u32) -> Scene {
-        let mut spheres = vec![];
+        let mut objects: Vec<Box<dyn Hittable>> = vec![];
         let ground_material = Material::Lambertian(Color::new(0.5, 0.5, 0.5));
-        spheres.push(Sphere::new(
+        objects.push(Sphere::new(
             ground_material,
             Point::new(0.0, -1000.0, 0.0),
             1000.0,
@@ -63,38 +72,28 @@ impl Scene {
                         material = Material::Dielectric(1.5);
                     }
 
-                    spheres.push(Sphere::new(material, center, 0.2));
+                    objects.push(Sphere::new(material, center, 0.2));
                 }
             }
         }
 
         let material1 = Material::Dielectric(1.5);
-        spheres.push(Sphere::new(material1, Point::new(0.0, 1.0, 0.0), 1.0));
+        objects.push(Sphere::new(material1, Point::new(0.0, 1.0, 0.0), 1.0));
 
         let material2 = Material::Lambertian(Color::new(0.4, 0.2, 0.1));
-        spheres.push(Sphere::new(material2, Point::new(-4.0, 1.0, 0.0), 1.0));
+        objects.push(Sphere::new(material2, Point::new(-4.0, 1.0, 0.0), 1.0));
 
         let material3 = Material::Metal(Color::new(0.7, 0.6, 0.5), 0.0);
-        spheres.push(Sphere::new(material3, Point::new(4.0, 1.0, 0.0), 1.0));
+        objects.push(Sphere::new(material3, Point::new(4.0, 1.0, 0.0), 1.0));
 
-        Scene { spheres }
-    }
-    pub fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
-        let mut res = None;
-        let start: f64 = range.start;
-        let mut end: f64 = range.end;
-
-        for &sphere in &self.spheres {
-            match sphere.hit(ray, start..end) {
-                None => {}
-                Some(hit) => {
-                    end = hit.t;
-                    res = Some(hit);
-                }
-            }
+        Scene {
+            bvh: BVHNode::from_hittables(objects),
         }
+    }
 
-        res
+    #[inline]
+    pub fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit> {
+        self.bvh.hit(ray, range)
     }
 }
 
@@ -130,12 +129,12 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(material: Material, center: Point, radius: f64) -> Sphere {
-        Sphere {
+    pub fn new(material: Material, center: Point, radius: f64) -> Box<Sphere> {
+        Box::new(Sphere {
             material,
             center,
             radius,
-        }
+        })
     }
 }
 

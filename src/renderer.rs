@@ -17,7 +17,34 @@ pub fn render() {
     let mut window = make_window();
     let buf = Arc::new(RwLock::new(make_buffer()));
 
-    let scene = Scene::random(2);
+    let scene = Scene::random(10);
+    // let scene = Scene::from_objects(vec![
+    //     Sphere::new(
+    //         Material::Lambertian(Color::new(0.7, 0.3, 0.3)),
+    //         Point::new(0.0, 0.0, -1.0),
+    //         0.5,
+    //     ),
+    //     Sphere::new(
+    //         Material::Lambertian(Color::new(0.8, 0.8, 0.0)),
+    //         Point::new(0.0, -100.5, -1.0),
+    //         100.0,
+    //     ),
+    //     Sphere::new(
+    //         Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
+    //         Point::new(1.0, 0.0, -1.0),
+    //         0.5,
+    //     ),
+    //     Sphere::new(
+    //         Material::Dielectric(1.5),
+    //         Point::new(-1.0, 0.0, -1.0),
+    //         0.5,
+    //     ),
+    //     Sphere::new(
+    //         Material::Dielectric(1.5),
+    //         Point::new(-1.0, 0.0, -1.0),
+    //         -0.45,
+    //     ),
+    // ]);
 
     {
         let buf = Arc::clone(&buf);
