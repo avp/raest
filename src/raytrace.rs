@@ -18,19 +18,17 @@ fn raytrace_rows(
     scene: &Scene,
     camera: &Camera,
     buf: Arc<RwLock<Buffer>>,
-    im_width: usize,
-    im_height: usize,
     rows: Range<usize>,
 ) {
-    let mut row = vec![0; im_width];
+    let mut row = vec![0; config.width];
     for r in rows {
         for (c, result) in row.iter_mut().enumerate() {
             let mut color_sum = Color::zeros();
             for _ in 0..config.samples {
-                let u =
-                    (c as f64 + random_f64(0.0..1.0)) / (im_width as f64 - 1.0);
-                let v = ((im_height - r) as f64 + random_f64(0.0..1.0))
-                    / (im_height as f64 - 1.0);
+                let u = (c as f64 + random_f64(0.0..1.0))
+                    / (config.width as f64 - 1.0);
+                let v = ((config.height - r) as f64 + random_f64(0.0..1.0))
+                    / (config.height as f64 - 1.0);
                 let ray = camera.get_ray(u, v);
                 color_sum += ray_color(scene, ray, 0);
             }
@@ -38,21 +36,19 @@ fn raytrace_rows(
         }
         {
             let mut b = buf.write().unwrap();
-            b[r * im_width..(r + 1) * im_width].clone_from_slice(&row);
+            b[r * config.width..(r + 1) * config.width].clone_from_slice(&row);
         }
     }
 }
 
 pub fn raytrace<'a>(
-    config: Config,
+    config: Arc<Config>,
     scene: &'a Scene,
     buf: Arc<RwLock<Buffer>>,
-    im_width: usize,
-    im_height: usize,
 ) {
-    let aspect_ratio: f64 = im_width as f64 / im_height as f64;
+    let aspect_ratio: f64 = config.width as f64 / config.height as f64;
 
-    // let from = Point::new(13.0, 2.0, 3.0);
+    // let from = Point::new(0.0, 0.0, 8.0);
     // let at = Point::new(0.0, 0.0, 0.0);
     // let up = Vector::new(0.0, 1.0, 0.0);
     // let dist = 10.0;
@@ -66,23 +62,15 @@ pub fn raytrace<'a>(
 
     let start = Instant::now();
 
-    let rows_per = (im_height / config.threads) + 1;
+    let rows_per = (config.height / config.threads) + 1;
     thread::scope(|scope| {
         let config = &config;
         for i in 0..config.threads {
             let buf = buf.clone();
             let start = i * rows_per;
-            let end = usize::min(im_height, (i + 1) * rows_per);
+            let end = usize::min(config.height, (i + 1) * rows_per);
             scope.spawn(move |_| {
-                raytrace_rows(
-                    config,
-                    scene,
-                    camera,
-                    buf,
-                    im_width,
-                    im_height,
-                    start..end,
-                );
+                raytrace_rows(config, scene, camera, buf, start..end);
             });
         }
     })
@@ -91,13 +79,13 @@ pub fn raytrace<'a>(
     let elapsed = start.elapsed();
     println!("Render time: {} ms", elapsed.as_millis());
 
-    if let Some(output) = config.output {
+    if let Some(output) = &config.output {
         let buf = buf.read().unwrap();
         let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(
-            im_width as u32,
-            im_height as u32,
+            config.width as u32,
+            config.height as u32,
             |c, r| -> Rgb<u8> {
-                let pix = buf[(r * im_width as u32 + c) as usize];
+                let pix = buf[(r * config.width as u32 + c) as usize];
                 let red = ((pix >> 16) & 0xff) as u8;
                 let green = ((pix >> 8) & 0xff) as u8;
                 let blue = (pix & 0xff) as u8;

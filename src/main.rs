@@ -1,5 +1,6 @@
 #![feature(clamp)]
 
+use std::sync::Arc;
 use structopt::StructOpt;
 
 mod camera;
@@ -18,5 +19,5 @@ mod color {
 
 fn main() {
     let config = config::Config::from_args();
-    renderer::render(config);
+    renderer::render(Arc::new(config));
 }

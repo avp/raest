@@ -12,4 +12,10 @@ pub struct Config {
 
     #[structopt(short = "j", long, default_value = "4")]
     pub threads: usize,
+
+    #[structopt(long, default_value = "640")]
+    pub width: usize,
+
+    #[structopt(long, default_value = "360")]
+    pub height: usize,
 }

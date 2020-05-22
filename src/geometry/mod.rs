@@ -4,6 +4,7 @@ mod bvh;
 mod ray;
 mod rect;
 mod sphere;
+mod transform;
 
 pub use ray::Ray;
 
@@ -11,7 +12,8 @@ use crate::color::Color;
 use crate::material::Material;
 use crate::texture::Texture;
 use crate::util::*;
-use nalgebra::{Point3, Vector3};
+use nalgebra::geometry::UnitQuaternion;
+use nalgebra::{Point3, Rotation3, Vector3};
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -20,6 +22,7 @@ use block::Block;
 use bvh::BVHNode;
 use rect::{Rect, RectAxis};
 use sphere::Sphere;
+use transform::{Rotate, Translate};
 
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
@@ -123,10 +126,27 @@ impl Scene {
             vec![
                 Sphere::new(
                     Material::Lambertian(Texture::Solid(Color::new(
-                        0.7, 0.3, 0.3,
+                        0.1, 0.8, 0.3,
                     ))),
-                    Point::new(0.0, 0.0, -1.0),
+                    Point::new(1.0, 0.0, -1.0),
                     0.5,
+                ),
+                Translate::new(
+                    Rotate::new(
+                        Sphere::new(
+                            Material::Lambertian(Texture::Solid(Color::new(
+                                0.7, 0.3, 0.3,
+                            ))),
+                            Point::new(1.0, 0.0, -1.0),
+                            0.5,
+                        ),
+                        dbg!(Rotation3::new(Vector::new(
+                            0.0,
+                            0.0,
+                            90.0f64.to_radians()
+                        ))),
+                    ),
+                    Vector::new(0.0, 0.0, 0.0),
                 ),
                 Sphere::new(
                     Material::Lambertian(Texture::Solid(Color::new(
@@ -135,21 +155,21 @@ impl Scene {
                     Point::new(0.0, -100.5, -1.0),
                     100.0,
                 ),
-                Sphere::new(
-                    Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
-                    Point::new(1.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Sphere::new(
-                    Material::Dielectric(1.5),
-                    Point::new(-1.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Sphere::new(
-                    Material::Dielectric(1.5),
-                    Point::new(-1.0, 0.0, -1.0),
-                    -0.45,
-                ),
+                // Sphere::new(
+                //     Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
+                //     Point::new(1.0, 0.0, -1.0),
+                //     0.5,
+                // ),
+                // Sphere::new(
+                //     Material::Dielectric(1.5),
+                //     Point::new(-1.0, 0.0, -1.0),
+                //     0.5,
+                // ),
+                // Sphere::new(
+                //     Material::Dielectric(1.5),
+                //     Point::new(-1.0, 0.0, -1.0),
+                //     -0.45,
+                // ),
             ],
         )
     }
@@ -251,15 +271,27 @@ impl Scene {
             555.0,
         ));
 
-        objects.push(Block::new(
-            Material::Lambertian(Texture::Solid(white)),
-            Point::new(130.0, 0.0, 65.0),
-            Point::new(295.0, 165.0, 230.0),
+        objects.push(Translate::new(
+            Rotate::new(
+                Block::new(
+                    Material::Lambertian(Texture::Solid(white)),
+                    Point::new(0.0, 0.0, 0.0),
+                    Point::new(165.0, 330.0, 165.0),
+                ),
+                Rotation3::new(Vector::new(0.0, 15.0f64.to_radians(), 0.0)),
+            ),
+            Vector::new(265.0, 0.0, 295.0),
         ));
-        objects.push(Block::new(
-            Material::Lambertian(Texture::Solid(white)),
-            Point::new(265.0, 0.0, 295.0),
-            Point::new(430.0, 330.0, 460.0),
+        objects.push(Translate::new(
+            Rotate::new(
+                Block::new(
+                    Material::Lambertian(Texture::Solid(white)),
+                    Point::new(0.0, 0.0, 0.0),
+                    Point::new(165.0, 165.0, 165.0),
+                ),
+                Rotation3::new(Vector::new(0.0, -18.0f64.to_radians(), 0.0)),
+            ),
+            Vector::new(130.0, 0.0, 65.0),
         ));
 
         Scene::from_objects(Color::zeros(), objects)

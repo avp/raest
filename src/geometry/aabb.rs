@@ -4,8 +4,8 @@ use std::ops::Range;
 
 #[derive(Debug, Copy, Clone)]
 pub(super) struct AABB {
-    min: Point,
-    max: Point,
+    pub min: Point,
+    pub max: Point,
 }
 
 impl AABB {
