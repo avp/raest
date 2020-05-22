@@ -137,6 +137,11 @@ impl Scene {
             ),
         ])
     }
+
+    #[allow(dead_code)]
+    pub fn earth() -> Scene {
+        unimplemented!();
+    }
 }
 
 pub struct Hit<'obj> {

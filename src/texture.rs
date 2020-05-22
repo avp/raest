@@ -1,6 +1,7 @@
 use crate::color::Color;
 use crate::geometry::*;
-use image::DynamicImage;
+use crate::util::*;
+use image::{DynamicImage, GenericImageView, Pixel};
 
 pub enum Texture {
     Solid(Color),
@@ -22,7 +23,21 @@ impl Texture {
                 }
             }
             Texture::Image(img) => {
-                unimplemented!();
+                let u = fclamp(u, 0.0, 1.0);
+                let v = 1.0 - fclamp(v, 0.0, 1.0);
+                let x =
+                    clamp((u * img.width() as f64) as u32, 0, img.width() - 1);
+                let y = clamp(
+                    (v * img.height() as f64) as u32,
+                    0,
+                    img.height() - 1,
+                );
+                let pixel = img.get_pixel(x, y).to_rgb().0;
+                Color::new(
+                    pixel[0] as f64 / 255.0,
+                    pixel[1] as f64 / 255.0,
+                    pixel[2] as f64 / 255.0,
+                )
             }
         }
     }

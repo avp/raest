@@ -8,6 +8,7 @@ use image::{ImageBuffer, ImageFormat, Rgb};
 use std::ops::Range;
 use std::sync::Arc;
 use std::sync::RwLock;
+use std::time::Instant;
 
 pub struct Camera {
     pub origin: Point,
@@ -121,6 +122,8 @@ pub fn raytrace<'a>(
     let dist = 10.0;
     let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
+    let start = Instant::now();
+
     let rows_per = (im_height / config.threads) + 1;
     thread::scope(|scope| {
         let config = &config;
@@ -142,6 +145,9 @@ pub fn raytrace<'a>(
         }
     })
     .unwrap();
+
+    let elapsed = start.elapsed();
+    println!("Render time: {} ms", elapsed.as_millis());
 
     if let Some(output) = config.output {
         let buf = buf.read().unwrap();

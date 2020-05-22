@@ -58,3 +58,11 @@ pub fn schlick(cosine: f64, ior: f64) -> f64 {
             * one_minus_cos
             * one_minus_cos)
 }
+
+pub fn clamp<T: Ord>(val: T, min: T, max: T) -> T {
+    val.max(min).min(max)
+}
+
+pub fn fclamp(val: f64, min: f64, max: f64) -> f64 {
+    val.max(min).min(max)
+}
