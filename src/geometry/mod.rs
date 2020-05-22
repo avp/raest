@@ -56,8 +56,8 @@ impl Scene {
         self.bvh.hit(ray, range)
     }
 
-    pub fn from_file(config: &Config) -> (Scene, Camera) {
-        parser::parse(&config, "scenes/cornell_box.toml")
+    pub fn from_config(config: &Config) -> (Scene, Camera) {
+        parser::parse(&config)
     }
 
     // #[allow(dead_code)]

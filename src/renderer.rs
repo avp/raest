@@ -13,7 +13,7 @@ pub type Buffer = Vec<u32>;
 pub fn render(config: Arc<Config>) {
     let mut window = make_window(&config);
     let buf = Arc::new(RwLock::new(make_buffer(&config)));
-    let (scene, camera) = Scene::from_file(&config);
+    let (scene, camera) = Scene::from_config(&config);
 
     {
         let buf = buf.clone();

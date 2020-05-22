@@ -4,6 +4,9 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Raest", about = "A toy ray tracer written in Rust")]
 pub struct Config {
+    #[structopt(help = "The scene file to render")]
+    pub scene: PathBuf,
+
     #[structopt(short, long)]
     pub output: Option<PathBuf>,
 

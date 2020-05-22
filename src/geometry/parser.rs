@@ -2,7 +2,6 @@ use super::*;
 use nalgebra::Rotation3;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -149,14 +148,11 @@ fn transform(desc: &SceneDesc) -> Option<Scene> {
     Some(Scene::from_objects(Color::zeros(), result))
 }
 
-pub(super) fn parse<P: AsRef<Path>>(
-    config: &Config,
-    path: P,
-) -> (Scene, Camera) {
+pub(super) fn parse(config: &Config) -> (Scene, Camera) {
     use std::fs::File;
     use std::io::BufReader;
     use std::io::Read;
-    let file = File::open(path).unwrap();
+    let file = File::open(&config.scene).unwrap();
     let mut reader = BufReader::new(file);
     let mut string = String::new();
     reader.read_to_string(&mut string).unwrap();
