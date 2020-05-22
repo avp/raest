@@ -6,7 +6,7 @@ use crate::util::*;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-struct Camera {
+pub struct Camera {
     pub origin: Point,
     pub lower_left: Point,
     pub horiz: Vector,
@@ -14,18 +14,28 @@ struct Camera {
 }
 
 impl Camera {
-    fn new(aspect_ratio: f64) -> Camera {
-        let vp_height: f64 = 2.0;
+    fn new(
+        from: Point,
+        at: Point,
+        up: Vector,
+        vfov: f64,
+        aspect_ratio: f64,
+    ) -> Camera {
+        let theta = vfov.to_radians();
+        let h = (theta / 2.0).tan();
+        let vp_height: f64 = 2.0 * h;
         let vp_width: f64 = aspect_ratio * vp_height;
-        let focal_length = 1.0;
 
-        let origin = Point::origin();
-        let horiz = Vector::x() * vp_width;
-        let vert = Vector::y() * vp_height;
-        let lower_left = origin
-            - (horiz / 2.0)
-            - (vert / 2.0)
-            - (Vector::z() * focal_length);
+        let origin = from;
+
+        let w = (from - at).normalize();
+        let u = up.cross(&w).normalize();
+        let v = w.cross(&u);
+
+        let horiz = u * vp_width;
+        let vert = v * vp_height;
+
+        let lower_left = origin - (horiz / 2.0) - (vert / 2.0) - w;
 
         Camera {
             origin,
@@ -55,7 +65,13 @@ pub fn raytrace(
     im_height: usize,
 ) {
     let aspect_ratio: f64 = im_width as f64 / im_height as f64;
-    let camera = Camera::new(aspect_ratio);
+    let camera = Camera::new(
+        Point::new(-2.0, 2.0, 1.0),
+        Point::new(0.0, 0.0, -1.0),
+        Vector::new(0.0, 1.0, 0.0),
+        90.0,
+        aspect_ratio,
+    );
 
     let mut row = vec![Color::new(0.0, 0.0, 0.0); im_width];
     for r in 0..im_height {
