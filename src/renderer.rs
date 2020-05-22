@@ -13,16 +13,13 @@ pub type Buffer = Vec<u32>;
 pub fn render(config: Arc<Config>) {
     let mut window = make_window(&config);
     let buf = Arc::new(RwLock::new(make_buffer(&config)));
-
-    // let scene = Scene::random(10);
-    // let scene = Scene::test();
-    let scene = Scene::cornell_box();
+    let (scene, camera) = Scene::cornell_box(&config);
 
     {
         let buf = buf.clone();
         let config = config.clone();
         thread::spawn(move || {
-            raytrace::raytrace(config, &scene, buf);
+            raytrace::raytrace(config, &scene, &camera, buf);
         });
     }
 

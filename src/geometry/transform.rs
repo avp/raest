@@ -1,5 +1,4 @@
 use super::*;
-use nalgebra::geometry::UnitQuaternion;
 use nalgebra::Rotation3;
 use std::ops::Range;
 

@@ -20,8 +20,11 @@ fn raytrace_rows(
     buf: Arc<RwLock<Buffer>>,
     rows: Range<usize>,
 ) {
-    let mut row = vec![0; config.width];
+    // Buffer the rows before writing them to `buf` to avoid too much contention
+    // on the lock.
+    let mut row_backlog: Vec<(usize, Vec<u32>)> = vec![];
     for r in rows {
+        let mut row: Vec<u32> = vec![0; config.width];
         for (c, result) in row.iter_mut().enumerate() {
             let mut color_sum = Color::zeros();
             for _ in 0..config.samples {
@@ -34,35 +37,30 @@ fn raytrace_rows(
             }
             *result = write_color(config, color_sum);
         }
-        {
-            let mut b = buf.write().unwrap();
-            b[r * config.width..(r + 1) * config.width].clone_from_slice(&row);
+        row_backlog.push((r, row));
+        if let Ok(mut b) = buf.try_write() {
+            for (r, row) in &row_backlog {
+                b[r * config.width..(r + 1) * config.width]
+                    .clone_from_slice(&row);
+            }
+            row_backlog.clear();
         }
+    }
+    let mut b = buf.write().unwrap();
+    for (r, row) in &row_backlog {
+        b[r * config.width..(r + 1) * config.width].clone_from_slice(&row);
     }
 }
 
 pub fn raytrace<'a>(
     config: Arc<Config>,
     scene: &'a Scene,
+    camera: &'a Camera,
     buf: Arc<RwLock<Buffer>>,
 ) {
-    let aspect_ratio: f64 = config.width as f64 / config.height as f64;
-
-    // let from = Point::new(0.0, 0.0, 8.0);
-    // let at = Point::new(0.0, 0.0, 0.0);
-    // let up = Vector::new(0.0, 1.0, 0.0);
-    // let dist = 10.0;
-    // let camera = &Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
-
-    let from = Point::new(278.0, 278.0, -800.0);
-    let at = Point::new(278.0, 278.0, 0.0);
-    let up = Vector::new(0.0, 1.0, 0.0);
-    let dist = 10.0;
-    let camera = &Camera::new(from, at, up, 40.0, aspect_ratio, 0.0, dist);
+    let rows_per = (config.height / config.threads) + 1;
 
     let start = Instant::now();
-
-    let rows_per = (config.height / config.threads) + 1;
     thread::scope(|scope| {
         let config = &config;
         for i in 0..config.threads {
@@ -75,8 +73,8 @@ pub fn raytrace<'a>(
         }
     })
     .unwrap();
-
     let elapsed = start.elapsed();
+
     println!("Render time: {} ms", elapsed.as_millis());
 
     if let Some(output) = &config.output {

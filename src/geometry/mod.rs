@@ -8,11 +8,12 @@ mod transform;
 
 pub use ray::Ray;
 
+use crate::camera::Camera;
 use crate::color::Color;
+use crate::config::Config;
 use crate::material::Material;
 use crate::texture::Texture;
 use crate::util::*;
-use nalgebra::geometry::UnitQuaternion;
 use nalgebra::{Point3, Rotation3, Vector3};
 use std::ops::Range;
 use std::sync::Arc;
@@ -55,7 +56,7 @@ impl Scene {
     }
 
     #[allow(dead_code)]
-    pub fn random(n: u32) -> Scene {
+    pub fn random(config: &Config, n: u32) -> (Scene, Camera) {
         let mut objects: Vec<Box<dyn Hittable>> = vec![];
         let ground_texture = Texture::Checker(
             Box::new(Texture::Solid(Color::new(0.2, 0.3, 0.1))),
@@ -116,111 +117,105 @@ impl Scene {
         let material3 = Material::Metal(Color::new(0.7, 0.6, 0.5), 0.0);
         objects.push(Sphere::new(material3, Point::new(4.0, 1.0, 0.0), 1.0));
 
-        Self::from_objects(Color::new(0.5, 0.7, 1.0), objects)
-    }
+        let aspect_ratio: f64 = config.width as f64 / config.height as f64;
+        let from = Point::new(13.0, 2.0, 8.0);
+        let at = Point::new(0.0, 0.0, 0.0);
+        let up = Vector::new(0.0, 1.0, 0.0);
+        let dist = 10.0;
+        let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
-    #[allow(dead_code)]
-    pub fn test() -> Scene {
-        Scene::from_objects(
-            Color::new(0.5, 0.7, 1.0),
-            vec![
-                Sphere::new(
-                    Material::Lambertian(Texture::Solid(Color::new(
-                        0.1, 0.8, 0.3,
-                    ))),
-                    Point::new(1.0, 0.0, -1.0),
-                    0.5,
-                ),
-                Translate::new(
-                    Rotate::new(
-                        Sphere::new(
-                            Material::Lambertian(Texture::Solid(Color::new(
-                                0.7, 0.3, 0.3,
-                            ))),
-                            Point::new(1.0, 0.0, -1.0),
-                            0.5,
-                        ),
-                        dbg!(Rotation3::new(Vector::new(
-                            0.0,
-                            0.0,
-                            90.0f64.to_radians()
-                        ))),
-                    ),
-                    Vector::new(0.0, 0.0, 0.0),
-                ),
-                Sphere::new(
-                    Material::Lambertian(Texture::Solid(Color::new(
-                        0.8, 0.8, 0.0,
-                    ))),
-                    Point::new(0.0, -100.5, -1.0),
-                    100.0,
-                ),
-                // Sphere::new(
-                //     Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
-                //     Point::new(1.0, 0.0, -1.0),
-                //     0.5,
-                // ),
-                // Sphere::new(
-                //     Material::Dielectric(1.5),
-                //     Point::new(-1.0, 0.0, -1.0),
-                //     0.5,
-                // ),
-                // Sphere::new(
-                //     Material::Dielectric(1.5),
-                //     Point::new(-1.0, 0.0, -1.0),
-                //     -0.45,
-                // ),
-            ],
+        (
+            Self::from_objects(Color::new(0.5, 0.7, 1.0), objects),
+            camera,
         )
     }
 
     #[allow(dead_code)]
-    pub fn earth() -> Scene {
+    pub fn test(config: &Config) -> (Scene, Camera) {
+        let aspect_ratio: f64 = config.width as f64 / config.height as f64;
+        let from = Point::new(0.0, 0.0, 8.0);
+        let at = Point::new(0.0, 0.0, 0.0);
+        let up = Vector::new(0.0, 1.0, 0.0);
+        let dist = 10.0;
+        let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
+
+        (
+            Scene::from_objects(
+                Color::new(0.5, 0.7, 1.0),
+                vec![
+                    Sphere::new(
+                        Material::Lambertian(Texture::Solid(Color::new(
+                            0.1, 0.8, 0.3,
+                        ))),
+                        Point::new(1.0, 0.0, -1.0),
+                        0.5,
+                    ),
+                    Translate::new(
+                        Rotate::new(
+                            Sphere::new(
+                                Material::Lambertian(Texture::Solid(
+                                    Color::new(0.7, 0.3, 0.3),
+                                )),
+                                Point::new(1.0, 0.0, -1.0),
+                                0.5,
+                            ),
+                            dbg!(Rotation3::new(Vector::new(
+                                0.0,
+                                0.0,
+                                90.0f64.to_radians()
+                            ))),
+                        ),
+                        Vector::new(0.0, 0.0, 0.0),
+                    ),
+                    Sphere::new(
+                        Material::Lambertian(Texture::Solid(Color::new(
+                            0.8, 0.8, 0.0,
+                        ))),
+                        Point::new(0.0, -100.5, -1.0),
+                        100.0,
+                    ),
+                    // Sphere::new(
+                    //     Material::Metal(Color::new(0.8, 0.6, 0.2), 0.0),
+                    //     Point::new(1.0, 0.0, -1.0),
+                    //     0.5,
+                    // ),
+                    // Sphere::new(
+                    //     Material::Dielectric(1.5),
+                    //     Point::new(-1.0, 0.0, -1.0),
+                    //     0.5,
+                    // ),
+                    // Sphere::new(
+                    //     Material::Dielectric(1.5),
+                    //     Point::new(-1.0, 0.0, -1.0),
+                    //     -0.45,
+                    // ),
+                ],
+            ),
+            camera,
+        )
+    }
+
+    #[allow(dead_code)]
+    pub fn earth(config: &Config) -> (Scene, Camera) {
+        let aspect_ratio: f64 = config.width as f64 / config.height as f64;
+        let from = Point::new(13.0, 2.0, 8.0);
+        let at = Point::new(0.0, 0.0, 0.0);
+        let up = Vector::new(0.0, 1.0, 0.0);
+        let dist = 10.0;
+        let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
+
         let earth_tex =
             Texture::Image(image::open("images/earthmap.jpg").unwrap());
         let global =
             Sphere::new(Material::Lambertian(earth_tex), Point::origin(), 2.0);
-        Scene::from_objects(Color::new(0.5, 0.7, 1.0), vec![global])
+        (
+            Scene::from_objects(Color::new(0.5, 0.7, 1.0), vec![global]),
+            camera,
+        )
     }
 
     #[allow(dead_code)]
-    pub fn simple_light() -> Scene {
-        let mut objects: Vec<Box<dyn Hittable>> = vec![];
-
-        objects.push(Sphere::new(
-            Material::Lambertian(Texture::Solid(Color::new(0.8, 0.3, 0.1))),
-            Point::new(0.0, -1000.0, 0.0),
-            1000.0,
-        ));
-        objects.push(Sphere::new(
-            Material::Lambertian(Texture::Solid(Color::new(0.8, 0.3, 0.1))),
-            Point::new(0.0, 2.0, 0.0),
-            2.0,
-        ));
-
-        objects.push(Sphere::new(
-            Material::Emission(Texture::Solid(Color::new(4.0, 4.0, 4.0))),
-            Point::new(0.0, 7.0, 0.0),
-            2.0,
-        ));
-        objects.push(Sphere::new(
-            Material::Emission(Texture::Solid(Color::new(4.0, 4.0, 4.0))),
-            Point::new(0.0, 7.0, 0.0),
-            2.0,
-        ));
-        objects.push(Rect::new(
-            Material::Emission(Texture::Solid(Color::new(4.0, 4.0, 4.0))),
-            RectAxis::XY,
-            (3.0, 5.0),
-            (1.0, 3.0),
-            -2.0,
-        ));
-
-        Scene::from_objects(Color::zeros(), objects)
-    }
-
-    #[allow(dead_code)]
-    pub fn cornell_box() -> Scene {
+    pub fn cornell_box(config: &Config) -> (Scene, Camera) {
         let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
         let red = Color::new(0.65, 0.05, 0.05);
@@ -294,7 +289,14 @@ impl Scene {
             Vector::new(130.0, 0.0, 65.0),
         ));
 
-        Scene::from_objects(Color::zeros(), objects)
+        let aspect_ratio: f64 = config.width as f64 / config.height as f64;
+        let from = Point::new(278.0, 278.0, -800.0);
+        let at = Point::new(278.0, 278.0, 0.0);
+        let up = Vector::new(0.0, 1.0, 0.0);
+        let dist = 10.0;
+        let camera = Camera::new(from, at, up, 40.0, aspect_ratio, 0.0, dist);
+
+        (Scene::from_objects(Color::zeros(), objects), camera)
     }
 }
 

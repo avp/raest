@@ -49,7 +49,7 @@ impl Block {
             p1.x,
         ));
         sides.push(Rect::new(
-            material.clone(),
+            material,
             RectAxis::YZ,
             (p1.y, p1.z),
             (p2.y, p2.z),
