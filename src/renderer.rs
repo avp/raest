@@ -39,6 +39,11 @@ pub fn render() {
                 Point::new(-1.0, 0.0, -1.0),
                 0.5,
             ),
+            Sphere::new(
+                Material::Dielectric(1.5),
+                Point::new(-1.0, 0.0, -1.0),
+                -0.45,
+            ),
         ],
     };
 
