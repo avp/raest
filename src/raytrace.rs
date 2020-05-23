@@ -106,6 +106,13 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
             match hit.material.scatter(&ray, &hit) {
                 None => emit,
                 Some(scatter) => {
+                    if let Some(specular) = scatter.specular {
+                        return scatter.attenuation.component_mul(&ray_color(
+                            scene,
+                            specular,
+                            depth + 1,
+                        ));
+                    }
                     let material =
                         Arc::new(crate::material::Material::Dielectric(1.5));
                     let light = Rect::new(
@@ -125,7 +132,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
                     let mat_pdf =
                         hit.material.scatter_pdf(ray, scatter_ray, &hit);
                     let color = ray_color(scene, scatter_ray, depth + 1);
-                    emit + scatter.albedo.component_mul(&color)
+                    emit + scatter.attenuation.component_mul(&color)
                         * mat_pdf
                         * mix_pdf.value(scatter_ray.dir).recip()
                 }

@@ -99,15 +99,17 @@ start = [0, 0, 0]
 end = [165, 333, 165]
 rotate = [0, 15, 0]
 translate = [265, 0, 295]
-# [[objects]]
-# kind = "Sphere"
-# material = "glass"
-# center = [190, 90, 190]
-# radius = 90
+
 [[objects]]
-kind = "Block"
-material = "white"
-start = [0, 0, 0]
-end = [165, 165, 165]
-rotate = [0, -18, 0]
-translate = [130, 0, 65]
+kind = "Sphere"
+material = "glass"
+center = [190, 90, 190]
+radius = 90
+
+# [[objects]]
+# kind = "Block"
+# material = "white"
+# start = [0, 0, 0]
+# end = [165, 165, 165]
+# rotate = [0, -18, 0]
+# translate = [130, 0, 65]

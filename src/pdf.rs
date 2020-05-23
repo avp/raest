@@ -4,7 +4,7 @@ use crate::util::*;
 use nalgebra::Unit;
 use std::f64::consts::PI;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum PDF<'scene> {
     Cosine(ONB),
     Hittable(Point, &'scene dyn Hittable),

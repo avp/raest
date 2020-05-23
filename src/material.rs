@@ -3,8 +3,6 @@ use crate::geometry::{Hit, Ray, ONB};
 use crate::pdf::PDF;
 use crate::texture::Texture;
 use crate::util::*;
-use nalgebra::Unit;
-use std::f64::consts::PI;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -15,10 +13,10 @@ pub enum Material {
     Emission(Arc<Texture>),
 }
 
-pub struct Scatter {
-    pub ray: Ray,
-    pub albedo: Color,
-    pub pdf: f64,
+pub struct Scatter<'scene> {
+    pub specular: Option<Ray>,
+    pub attenuation: Color,
+    pub pdf: Option<PDF<'scene>>,
 }
 
 impl Material {
@@ -28,24 +26,21 @@ impl Material {
                 let pdf = PDF::cosine(hit.normal);
                 let scatter_dir = pdf.gen();
                 Some(Scatter {
-                    ray: Ray {
-                        origin: hit.point,
-                        dir: scatter_dir,
-                    },
-                    albedo: albedo.value(hit.uv, hit.point),
-                    pdf: pdf.value(scatter_dir),
+                    attenuation: albedo.value(hit.uv, hit.point),
+                    pdf: Some(pdf),
+                    specular: None,
                 })
             }
             &Material::Metal(albedo, roughness) => {
                 let scatter_dir = reflect(inbound.dir.normalize(), hit.normal);
                 Some(Scatter {
-                    ray: Ray {
+                    specular: Some(Ray {
                         origin: hit.point,
                         dir: scatter_dir
                             + (roughness * random_in_unit_sphere()),
-                    },
-                    albedo,
-                    pdf: 1.0,
+                    }),
+                    attenuation: albedo,
+                    pdf: None,
                 })
             }
             &Material::Dielectric(ior) => {
@@ -68,9 +63,9 @@ impl Material {
                     dir: scatter_dir,
                 };
                 Some(Scatter {
-                    ray: out,
-                    albedo: Color::new(1.0, 1.0, 1.0),
-                    pdf: 1.0,
+                    specular: Some(out),
+                    attenuation: Color::new(1.0, 1.0, 1.0),
+                    pdf: None,
                 })
             }
             Material::Emission(..) => None,
