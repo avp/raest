@@ -1,12 +1,14 @@
 mod aabb;
 mod block;
 mod bvh;
+mod onb;
 mod parser;
 mod ray;
 mod rect;
 mod sphere;
 mod transform;
 
+pub use onb::ONB;
 pub use ray::Ray;
 
 use crate::camera::Camera;
@@ -29,9 +31,15 @@ use transform::{Rotate, Translate};
 pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
-trait Hittable: Send + Sync {
+pub trait Hittable: Send + Sync {
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
+    fn pdf(&self, ray: Ray) -> f64 {
+        0.0
+    }
+    fn random(&self, origin: Point) -> Vector {
+        Vector::x()
+    }
 }
 
 pub struct Scene {

@@ -7,6 +7,7 @@ mod camera;
 mod config;
 mod geometry;
 mod material;
+mod pdf;
 mod raytrace;
 mod renderer;
 mod texture;

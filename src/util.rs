@@ -29,6 +29,19 @@ pub fn random_in_unit_sphere() -> Vector {
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
 
+pub fn random_cosine_dir() -> Vector {
+    let r1 = random_f64(0.0..1.0);
+    let r2 = random_f64(0.0..1.0);
+    let z = (1.0 - r2).sqrt();
+
+    let phi = 2.0 * PI * r1;
+    let r2_sqrt = r2.sqrt();
+    let x = phi.cos() * r2_sqrt;
+    let y = phi.sin() * r2_sqrt;
+
+    return Vector::new(x, y, z);
+}
+
 pub fn reflect(vec: Vector, n: Unit<Vector>) -> Vector {
     vec - (2.0 * vec.dot(&n) * *n)
 }

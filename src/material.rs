@@ -1,7 +1,9 @@
 use crate::color::Color;
-use crate::geometry::{Hit, Ray};
+use crate::geometry::{Hit, Ray, ONB};
+use crate::pdf::PDF;
 use crate::texture::Texture;
 use crate::util::*;
+use nalgebra::Unit;
 use std::f64::consts::PI;
 use std::sync::Arc;
 
@@ -23,17 +25,15 @@ impl Material {
     pub fn scatter(&self, inbound: &Ray, hit: &Hit) -> Option<Scatter> {
         match self {
             Material::Lambertian(albedo) => {
-                let scatter_dir =
-                    (*hit.normal + random_unit_vector()).normalize();
-                // pdf = cos(theta) / PI.
-                let pdf = hit.normal.dot(&scatter_dir) / PI;
+                let pdf = PDF::cosine(hit.normal);
+                let scatter_dir = pdf.gen();
                 Some(Scatter {
                     ray: Ray {
                         origin: hit.point,
                         dir: scatter_dir,
                     },
                     albedo: albedo.value(hit.uv, hit.point),
-                    pdf,
+                    pdf: pdf.value(scatter_dir),
                 })
             }
             &Material::Metal(albedo, roughness) => {
@@ -80,12 +80,7 @@ impl Material {
     pub fn scatter_pdf(&self, _inbound: Ray, scattered: Ray, hit: &Hit) -> f64 {
         match self {
             Material::Lambertian(..) => {
-                let cos = hit.normal.dot(&scattered.dir.normalize());
-                if cos < 0.0 {
-                    0.0
-                } else {
-                    cos / PI
-                }
+                PDF::cosine(hit.normal).value(scattered.dir)
             }
             Material::Metal(..) => 1.0,
             Material::Dielectric(..) => 1.0,
