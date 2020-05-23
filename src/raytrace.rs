@@ -2,6 +2,7 @@ use crate::camera::Camera;
 use crate::color::Color;
 use crate::config::Config;
 use crate::geometry::*;
+use crate::pdf::PDF;
 use crate::renderer::Buffer;
 use crate::util::*;
 use crossbeam::thread;
@@ -105,12 +106,28 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
             match hit.material.scatter(&ray, &hit) {
                 None => emit,
                 Some(scatter) => {
-                    let scatter_pdf =
-                        hit.material.scatter_pdf(ray, scatter.ray, &hit);
-                    let color = ray_color(scene, scatter.ray, depth + 1);
+                    let material =
+                        Arc::new(crate::material::Material::Dielectric(1.5));
+                    let light = Rect::new(
+                        material,
+                        RectAxis::XZ,
+                        (213.0, 227.0),
+                        (343.0, 332.0),
+                        554.0,
+                    );
+                    let cos_pdf = PDF::cosine(hit.normal);
+                    let light_pdf = PDF::hittable(hit.point, light.as_ref());
+                    let mix_pdf = PDF::mix(&cos_pdf, &light_pdf);
+                    let scatter_ray = Ray {
+                        origin: hit.point,
+                        dir: mix_pdf.gen(),
+                    };
+                    let mat_pdf =
+                        hit.material.scatter_pdf(ray, scatter_ray, &hit);
+                    let color = ray_color(scene, scatter_ray, depth + 1);
                     emit + scatter.albedo.component_mul(&color)
-                        * scatter_pdf
-                        * scatter.pdf.recip()
+                        * mat_pdf
+                        * mix_pdf.value(scatter_ray.dir).recip()
                 }
             }
         }

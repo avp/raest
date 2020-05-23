@@ -54,23 +54,32 @@ pub struct Rect {
     axis: RectAxis,
     p1: Point,
     p2: Point,
+    area: f64,
 }
 
 impl Rect {
     pub fn new(
         material: Arc<Material>,
         axis: RectAxis,
-        p1: (f64, f64),
-        p2: (f64, f64),
+        (a1, b1): (f64, f64),
+        (a2, b2): (f64, f64),
         k: f64,
     ) -> Box<Rect> {
-        let p1 = axis.point(p1, k);
-        let p2 = axis.point(p2, k);
+        let (a1, b1, a2, b2) = (
+            f64::min(a1, a2),
+            f64::min(b1, b2),
+            f64::max(a1, a2),
+            f64::max(b1, b2),
+        );
+        let p1 = axis.point((a1, b1), k);
+        let p2 = axis.point((a2, b2), k);
+        let area = ((a2 - a1) * (b2 - b1)).abs();
         Box::new(Rect {
             material,
             axis,
             p1,
             p2,
+            area,
         })
     }
 }
@@ -104,5 +113,26 @@ impl Hittable for Rect {
             .uv((p - self.p1).component_div(&(self.p2 - self.p1)));
 
         Some(Hit::new(ray, self.axis.unit(), t, &self.material, uv))
+    }
+
+    fn pdf(&self, ray: Ray) -> f64 {
+        match self.hit(ray, 0.0001..f64::INFINITY) {
+            None => 0.0,
+            Some(hit) => {
+                let norm_squared = hit.t * hit.t * ray.dir.norm_squared();
+                let cos = (ray.dir.dot(&hit.normal) / ray.dir.norm()).abs();
+                norm_squared / (cos * self.area)
+            }
+        }
+    }
+
+    fn random(&self, origin: Point) -> Vector {
+        const EPS: f64 = 0.0001;
+        let rand_point = Point::new(
+            random_f64(self.p1.x - EPS..self.p2.x + EPS),
+            random_f64(self.p1.y - EPS..self.p2.y + EPS),
+            random_f64(self.p1.z - EPS..self.p2.z + EPS),
+        );
+        rand_point - origin
     }
 }

@@ -3,17 +3,28 @@ use crate::geometry::{Point, Ray, Vector, ONB};
 use crate::util::*;
 use nalgebra::Unit;
 use std::f64::consts::PI;
-use std::sync::Arc;
 
 #[derive(Clone)]
-pub enum PDF {
+pub enum PDF<'scene> {
     Cosine(ONB),
-    Hittable(Point, Arc<dyn Hittable>),
+    Hittable(Point, &'scene dyn Hittable),
+    Mix(&'scene PDF<'scene>, &'scene PDF<'scene>),
 }
 
-impl PDF {
-    pub fn cosine(w: Unit<Vector>) -> PDF {
+impl<'scene> PDF<'scene> {
+    pub fn cosine(w: Unit<Vector>) -> PDF<'scene> {
         PDF::Cosine(ONB::from_w(w))
+    }
+
+    pub fn hittable(
+        origin: Point,
+        hittable: &'scene dyn Hittable,
+    ) -> PDF<'scene> {
+        PDF::Hittable(origin, hittable)
+    }
+
+    pub fn mix(pdf1: &'scene PDF, pdf2: &'scene PDF) -> PDF<'scene> {
+        PDF::Mix(pdf1, pdf2)
     }
 
     /// Computes the value of the PDF in the direction of `dir`.
@@ -31,6 +42,9 @@ impl PDF {
                 origin: *origin,
                 dir,
             }),
+            PDF::Mix(pdf1, pdf2) => {
+                0.5 * pdf1.value(dir) + 0.5 * pdf2.value(dir)
+            }
         }
     }
 
@@ -39,6 +53,13 @@ impl PDF {
         match self {
             PDF::Cosine(uvw) => uvw.localize(random_cosine_dir()),
             PDF::Hittable(origin, hittable) => hittable.random(*origin),
+            PDF::Mix(pdf1, pdf2) => {
+                if random_f64(0.0..1.0) < 0.5 {
+                    pdf1.gen()
+                } else {
+                    pdf2.gen()
+                }
+            }
         }
     }
 }

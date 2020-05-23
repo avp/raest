@@ -24,7 +24,7 @@ use std::sync::Arc;
 use aabb::AABB;
 use block::Block;
 use bvh::BVHNode;
-use rect::{Rect, RectAxis};
+pub use rect::{Rect, RectAxis};
 use sphere::Sphere;
 use transform::{Rotate, Translate};
 
@@ -34,10 +34,10 @@ pub type Vector = Vector3<f64>;
 pub trait Hittable: Send + Sync {
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
-    fn pdf(&self, ray: Ray) -> f64 {
+    fn pdf(&self, _ray: Ray) -> f64 {
         0.0
     }
-    fn random(&self, origin: Point) -> Vector {
+    fn random(&self, _origin: Point) -> Vector {
         Vector::x()
     }
 }
