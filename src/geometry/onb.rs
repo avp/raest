@@ -16,8 +16,8 @@ impl ONB {
         } else {
             Vector::x_axis()
         };
-        let v = Unit::new_normalize(w.cross(&a));
-        let u = Unit::new_normalize(w.cross(&v));
+        let v = Unit::new_unchecked(w.cross(&a));
+        let u = Unit::new_unchecked(w.cross(&v));
         ONB { u, v, w }
     }
 

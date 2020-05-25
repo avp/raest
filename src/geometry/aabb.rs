@@ -27,18 +27,13 @@ impl AABB {
         AABB::new(min, max)
     }
 
-    pub fn hit(&self, ray: Ray, mut range: Range<f64>) -> bool {
-        for dim in 0..self.min.len() {
-            let t0 = (self.min[dim] - ray.origin[dim]) * (1.0 / ray.dir[dim]);
-            let t1 = (self.max[dim] - ray.origin[dim]) * (1.0 / ray.dir[dim]);
-            let (t_in, t_out) = if t0 < t1 { (t0, t1) } else { (t1, t0) };
-            range.start = f64::max(range.start, t_in);
-            range.end = f64::min(range.end, t_out);
-            if range.end <= range.start {
-                return false;
-            }
-        }
-        true
+    pub fn hit(&self, ray: Ray, range: Range<f64>) -> bool {
+        let t0s = (self.min - ray.origin).component_div(&ray.dir);
+        let t1s = (self.max - ray.origin).component_div(&ray.dir);
+        let (t_in, t_out) = t0s.inf_sup(&t1s);
+        let start = f64::max(range.start, t_in.max());
+        let end = f64::min(range.end, t_out.min());
+        end > start
     }
 
     pub fn cmp_axis(&self, other: &AABB, axis: usize) -> Ordering {
