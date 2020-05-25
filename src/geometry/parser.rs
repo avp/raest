@@ -72,7 +72,7 @@ struct SceneDesc {
 fn transform(desc: &SceneDesc) -> Option<Scene> {
     let mut textures: HashMap<&str, Arc<Texture>> = HashMap::new();
     let mut materials: HashMap<&str, Arc<Material>> = HashMap::new();
-    let mut result: Vec<Box<dyn Hittable>> = vec![];
+    let mut result: Vec<Arc<dyn Hittable>> = vec![];
 
     for (name, tex) in &desc.textures {
         let texture = match tex {
@@ -105,7 +105,7 @@ fn transform(desc: &SceneDesc) -> Option<Scene> {
     }
 
     for obj in &desc.objects {
-        let mut hittable: Box<dyn Hittable> = match &obj.geometry {
+        let mut hittable: Arc<dyn Hittable> = match &obj.geometry {
             GeomDesc::Sphere {
                 material,
                 center,

@@ -10,6 +10,10 @@ pub(super) struct BVHNode {
 }
 
 impl Hittable for BVHNode {
+    fn is_light(&self) -> bool {
+        false
+    }
+
     fn bounding_box(&self) -> AABB {
         self.aabb
     }
@@ -28,14 +32,15 @@ impl Hittable for BVHNode {
 }
 
 impl BVHNode {
-    pub fn from_hittables(objects: Vec<Box<dyn Hittable>>) -> Arc<BVHNode> {
+    pub fn from_hittables(objects: Vec<Arc<dyn Hittable>>) -> Arc<BVHNode> {
         Self::from_hittables_along_axis(objects, 0)
     }
 
     fn from_hittables_along_axis(
-        mut objects: Vec<Box<dyn Hittable>>,
+        mut objects: Vec<Arc<dyn Hittable>>,
         axis: usize,
     ) -> Arc<BVHNode> {
+        assert!(!objects.is_empty(), "BVH must contain at least one object");
         let comparator = |a: &dyn Hittable, b: &dyn Hittable| -> Ordering {
             let a_box = a.bounding_box();
             let b_box = b.bounding_box();
@@ -51,8 +56,8 @@ impl BVHNode {
                     (arc.clone(), arc.clone())
                 }
                 2 => {
-                    let a1: Box<dyn Hittable> = objects.pop().unwrap();
-                    let a2: Box<dyn Hittable> = objects.pop().unwrap();
+                    let a1: Arc<dyn Hittable> = objects.pop().unwrap();
+                    let a2: Arc<dyn Hittable> = objects.pop().unwrap();
                     match comparator(&*a1, &*a2) {
                         Ordering::Less => (a1.into(), a2.into()),
                         _ => (a2.into(), a1.into()),

@@ -3,20 +3,24 @@ use nalgebra::{Rotation3, UnitQuaternion};
 use std::ops::Range;
 
 pub struct Translate {
-    target: Box<dyn Hittable>,
+    target: Arc<dyn Hittable>,
     offset: Vector,
 }
 
 impl Translate {
     pub(super) fn new(
-        target: Box<dyn Hittable>,
+        target: Arc<dyn Hittable>,
         offset: Vector,
-    ) -> Box<Translate> {
-        Box::new(Translate { target, offset })
+    ) -> Arc<Translate> {
+        Arc::new(Translate { target, offset })
     }
 }
 
 impl Hittable for Translate {
+    fn is_light(&self) -> bool {
+        self.target.is_light()
+    }
+
     fn bounding_box(&self) -> AABB {
         let aabb = self.target.bounding_box();
         AABB::new(aabb.min + self.offset, aabb.max + self.offset)
@@ -37,16 +41,16 @@ impl Hittable for Translate {
 }
 
 pub struct Rotate {
-    target: Box<dyn Hittable>,
+    target: Arc<dyn Hittable>,
     offset: UnitQuaternion<f64>,
 }
 
 impl Rotate {
     pub(super) fn new(
-        target: Box<dyn Hittable>,
+        target: Arc<dyn Hittable>,
         offset: Rotation3<f64>,
-    ) -> Box<Rotate> {
-        Box::new(Rotate {
+    ) -> Arc<Rotate> {
+        Arc::new(Rotate {
             target,
             offset: UnitQuaternion::from_rotation_matrix(&offset),
         })
@@ -54,6 +58,10 @@ impl Rotate {
 }
 
 impl Hittable for Rotate {
+    fn is_light(&self) -> bool {
+        self.target.is_light()
+    }
+
     fn bounding_box(&self) -> AABB {
         let aabb = self.target.bounding_box();
         let points = [

@@ -58,13 +58,20 @@ pub struct Rect {
 }
 
 impl Rect {
+    fn is_light(&self) -> bool {
+        match self.material.as_ref() {
+            Material::Emission(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn new(
         material: Arc<Material>,
         axis: RectAxis,
         (a1, b1): (f64, f64),
         (a2, b2): (f64, f64),
         k: f64,
-    ) -> Box<Rect> {
+    ) -> Arc<Rect> {
         let (a1, b1, a2, b2) = (
             f64::min(a1, a2),
             f64::min(b1, b2),
@@ -74,7 +81,7 @@ impl Rect {
         let p1 = axis.point((a1, b1), k);
         let p2 = axis.point((a2, b2), k);
         let area = ((a2 - a1) * (b2 - b1)).abs();
-        Box::new(Rect {
+        Arc::new(Rect {
             material,
             axis,
             p1,
@@ -85,6 +92,13 @@ impl Rect {
 }
 
 impl Hittable for Rect {
+    fn is_light(&self) -> bool {
+        match self.material.as_ref() {
+            Material::Emission(..) => true,
+            _ => false,
+        }
+    }
+
     fn bounding_box(&self) -> AABB {
         let offset: Vector = self.axis.point((0.0, 0.0), 0.001).coords;
         AABB::new(self.p1 - offset, self.p2 + offset)

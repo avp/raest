@@ -5,12 +5,13 @@ use crate::material::Material;
 use std::ops::Range;
 
 pub struct Block {
+    material: Arc<Material>,
     sides: Arc<BVHNode>,
 }
 
 impl Block {
-    pub fn new(material: Arc<Material>, p1: Point, p2: Point) -> Box<Block> {
-        let mut sides: Vec<Box<dyn Hittable>> = vec![];
+    pub fn new(material: Arc<Material>, p1: Point, p2: Point) -> Arc<Block> {
+        let mut sides: Vec<Arc<dyn Hittable>> = vec![];
         sides.push(Rect::new(
             material.clone(),
             RectAxis::XY,
@@ -56,13 +57,21 @@ impl Block {
             p2.x,
         ));
 
-        Box::new(Block {
+        Arc::new(Block {
+            material,
             sides: BVHNode::from_hittables(sides),
         })
     }
 }
 
 impl Hittable for Block {
+    fn is_light(&self) -> bool {
+        match self.material.as_ref() {
+            Material::Emission(..) => true,
+            _ => false,
+        }
+    }
+
     fn bounding_box(&self) -> AABB {
         self.sides.bounding_box()
     }

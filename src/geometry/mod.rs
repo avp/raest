@@ -32,6 +32,7 @@ pub type Point = Point3<f64>;
 pub type Vector = Vector3<f64>;
 
 pub trait Hittable: Send + Sync {
+    fn is_light(&self) -> bool;
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
     fn pdf(&self, _ray: Ray) -> f64 {
@@ -45,17 +46,29 @@ pub trait Hittable: Send + Sync {
 pub struct Scene {
     pub background: Color,
     bvh: Arc<BVHNode>,
+    lights: Option<Arc<BVHNode>>,
 }
 
 impl Scene {
     #[allow(dead_code)]
     fn from_objects(
         background: Color,
-        objects: Vec<Box<dyn Hittable>>,
+        objects: Vec<Arc<dyn Hittable>>,
     ) -> Scene {
+        let mut lights = vec![];
+        for obj in &objects {
+            if obj.is_light() {
+                lights.push(obj.clone());
+            }
+        }
         Scene {
             background,
             bvh: BVHNode::from_hittables(objects),
+            lights: if lights.is_empty() {
+                None
+            } else {
+                Some(BVHNode::from_hittables(lights))
+            },
         }
     }
 
@@ -71,7 +84,7 @@ impl Scene {
 
     #[allow(dead_code)]
     pub fn random(config: &Config, n: u32) -> (Scene, Camera) {
-        let mut objects: Vec<Box<dyn Hittable>> = vec![];
+        let mut objects: Vec<Arc<dyn Hittable>> = vec![];
         let ground_texture = Arc::new(Texture::Checker(
             Arc::new(Texture::Solid(Color::new(0.2, 0.3, 0.1))),
             Arc::new(Texture::Solid(Color::new(0.9, 0.9, 0.9))),

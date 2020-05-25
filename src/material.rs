@@ -15,8 +15,8 @@ pub enum Material {
 
 pub struct Scatter<'scene> {
     pub specular: Option<Ray>,
-    pub attenuation: Color,
     pub pdf: Option<PDF<'scene>>,
+    pub attenuation: Color,
 }
 
 impl Material {
@@ -24,7 +24,6 @@ impl Material {
         match self {
             Material::Lambertian(albedo) => {
                 let pdf = PDF::cosine(hit.normal);
-                let scatter_dir = pdf.gen();
                 Some(Scatter {
                     attenuation: albedo.value(hit.uv, hit.point),
                     pdf: Some(pdf),

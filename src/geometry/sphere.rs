@@ -16,8 +16,8 @@ impl Sphere {
         material: Arc<Material>,
         center: Point,
         radius: f64,
-    ) -> Box<Sphere> {
-        Box::new(Sphere {
+    ) -> Arc<Sphere> {
+        Arc::new(Sphere {
             material,
             center,
             radius,
@@ -26,6 +26,13 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
+    fn is_light(&self) -> bool {
+        match self.material.as_ref() {
+            Material::Emission(..) => true,
+            _ => false,
+        }
+    }
+
     fn bounding_box(&self) -> AABB {
         AABB::new(
             self.center - Vector::repeat(self.radius),
