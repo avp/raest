@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::ops::Range;
 use std::sync::Arc;
 
-pub(super) struct BVHNode {
+pub struct BVHNode {
     aabb: AABB,
     left: Arc<dyn Hittable>,
     right: Arc<dyn Hittable>,

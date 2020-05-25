@@ -58,13 +58,6 @@ pub struct Rect {
 }
 
 impl Rect {
-    fn is_light(&self) -> bool {
-        match self.material.as_ref() {
-            Material::Emission(..) => true,
-            _ => false,
-        }
-    }
-
     pub fn new(
         material: Arc<Material>,
         axis: RectAxis,

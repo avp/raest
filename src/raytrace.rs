@@ -113,28 +113,23 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
                             depth + 1,
                         ));
                     }
-                    let material =
-                        Arc::new(crate::material::Material::Dielectric(1.5));
-                    let light = Rect::new(
-                        material,
-                        RectAxis::XZ,
-                        (213.0, 227.0),
-                        (343.0, 332.0),
-                        554.0,
-                    );
                     let cos_pdf = PDF::cosine(hit.normal);
-                    let light_pdf = PDF::hittable(hit.point, light.as_ref());
-                    let mix_pdf = PDF::mix(&cos_pdf, &light_pdf);
+                    let light_pdf = PDF::hittable(hit.point, &scene.lights);
+                    let final_pdf = if scene.lights.is_empty() {
+                        cos_pdf
+                    } else {
+                        PDF::mix(&cos_pdf, &light_pdf)
+                    };
                     let scatter_ray = Ray {
                         origin: hit.point,
-                        dir: mix_pdf.gen(),
+                        dir: final_pdf.gen(),
                     };
                     let mat_pdf =
                         hit.material.scatter_pdf(ray, scatter_ray, &hit);
                     let color = ray_color(scene, scatter_ray, depth + 1);
                     emit + scatter.attenuation.component_mul(&color)
                         * mat_pdf
-                        * mix_pdf.value(scatter_ray.dir).recip()
+                        * final_pdf.value(scatter_ray.dir).recip()
                 }
             }
         }

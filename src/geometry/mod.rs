@@ -18,6 +18,7 @@ use crate::material::Material;
 use crate::texture::Texture;
 use crate::util::*;
 use nalgebra::{Point3, Unit, Vector3};
+use rand::seq::SliceRandom;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -46,7 +47,7 @@ pub trait Hittable: Send + Sync {
 pub struct Scene {
     pub background: Color,
     bvh: Arc<BVHNode>,
-    lights: Option<Arc<BVHNode>>,
+    pub lights: HittableList,
 }
 
 impl Scene {
@@ -64,11 +65,7 @@ impl Scene {
         Scene {
             background,
             bvh: BVHNode::from_hittables(objects),
-            lights: if lights.is_empty() {
-                None
-            } else {
-                Some(BVHNode::from_hittables(lights))
-            },
+            lights: HittableList::new(lights),
         }
     }
 
@@ -213,5 +210,65 @@ impl<'obj> Hit<'obj> {
             material,
             uv,
         }
+    }
+}
+
+pub struct HittableList {
+    hittables: Vec<Arc<dyn Hittable>>,
+}
+
+impl HittableList {
+    pub fn new(hittables: Vec<Arc<dyn Hittable>>) -> HittableList {
+        HittableList { hittables }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.hittables.is_empty()
+    }
+}
+
+impl Hittable for HittableList {
+    fn is_light(&self) -> bool {
+        false
+    }
+
+    fn bounding_box(&self) -> AABB {
+        if self.is_empty() {
+            return AABB::new(Point::origin(), Point::origin());
+        }
+        let mut result = self.hittables[0].bounding_box();
+        for h in &self.hittables {
+            result = AABB::containing(result, h.bounding_box());
+        }
+        result
+    }
+
+    fn hit(&self, ray: Ray, mut range: Range<f64>) -> Option<Hit> {
+        let mut result: Option<Hit> = None;
+        for h in &self.hittables {
+            if let Some(hit) = h.hit(ray, range.clone()) {
+                range.end = hit.t;
+                result = Some(hit);
+            }
+        }
+        result
+    }
+
+    fn pdf(&self, ray: Ray) -> f64 {
+        let weight = (self.hittables.len() as f64).recip();
+        let mut sum = 0.0;
+        for h in &self.hittables {
+            sum += weight * h.pdf(ray);
+        }
+        sum
+    }
+
+    fn random(&self, origin: Point) -> Vector {
+        let h = &self
+            .hittables
+            .as_slice()
+            .choose(&mut rand::thread_rng())
+            .unwrap();
+        h.random(origin)
     }
 }
