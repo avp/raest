@@ -24,10 +24,25 @@ enum TextureDesc {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 enum MaterialDesc {
-    Lambertian { texture: String },
-    Metal { color: Color, roughness: f64 },
-    Dielectric { ior: f64 },
-    Emission { texture: String },
+    Lambertian {
+        texture: String,
+    },
+    Phong {
+        kd: f64,
+        diffuse: String,
+        specular: String,
+        shininess: u32,
+    },
+    Metal {
+        color: Color,
+        roughness: f64,
+    },
+    Dielectric {
+        ior: f64,
+    },
+    Emission {
+        texture: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,6 +106,16 @@ fn transform(desc: &SceneDesc) -> Option<Scene> {
             MaterialDesc::Lambertian { texture } => {
                 let t = textures.get(texture.as_str())?.clone();
                 Material::Lambertian(t)
+            }
+            MaterialDesc::Phong {
+                kd,
+                diffuse,
+                specular,
+                shininess,
+            } => {
+                let td = textures.get(diffuse.as_str())?.clone();
+                let ts = textures.get(specular.as_str())?.clone();
+                Material::Phong(*kd, td, ts, *shininess)
             }
             MaterialDesc::Metal { color, roughness } => {
                 Material::Metal(*color, *roughness)

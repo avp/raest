@@ -7,6 +7,7 @@ use std::f64::consts::PI;
 #[derive(Copy, Clone)]
 pub enum PDF<'scene> {
     Cosine(ONB),
+    Phong(ONB, Unit<Vector>, u32),
     Hittable(Point, &'scene dyn Hittable),
     Mix(f64, &'scene PDF<'scene>, &'scene PDF<'scene>),
 }
@@ -14,6 +15,14 @@ pub enum PDF<'scene> {
 impl<'scene> PDF<'scene> {
     pub fn cosine(w: Unit<Vector>) -> PDF<'scene> {
         PDF::Cosine(ONB::from_w(w))
+    }
+
+    pub fn phong(
+        w: Unit<Vector>,
+        outbound: Unit<Vector>,
+        n: u32,
+    ) -> PDF<'scene> {
+        PDF::Phong(ONB::from_w(w), outbound, n)
     }
 
     pub fn hittable(
@@ -38,6 +47,11 @@ impl<'scene> PDF<'scene> {
                 let cos = dir.normalize().dot(&uvw.w);
                 f64::max(0.0, cos / PI)
             }
+            &PDF::Phong(_uvw, outbound, n) => {
+                // pdf(theta) = (n+1)/(2\pi) * cos^n(alpha)
+                let cos_alpha = dir.normalize().dot(&outbound);
+                (((n + 1) as f64) / (2.0 * PI)) * cos_alpha.powi(n as i32 + 1)
+            }
             PDF::Hittable(origin, hittable) => hittable.pdf(Ray {
                 origin: *origin,
                 dir,
@@ -52,6 +66,18 @@ impl<'scene> PDF<'scene> {
     pub fn gen(&self) -> Vector {
         match self {
             PDF::Cosine(uvw) => uvw.localize(random_cosine_dir()),
+            PDF::Phong(uvw, _outbound, n) => {
+                // https://www.cs.princeton.edu/courses/archive/fall16/cos526/papers/importance.pdf
+                let r1 = random_f64(0.0..1.0);
+                let r2 = random_f64(0.0..1.0);
+                let cos_alpha = r1.powf(((n + 1) as f64).recip());
+                let sin_alpha = (1.0 - cos_alpha).sqrt();
+                let phi = 2.0 * PI * r2;
+                let x = phi.cos() * sin_alpha;
+                let y = phi.sin() * sin_alpha;
+                let z = cos_alpha;
+                uvw.localize(Vector::new(x, y, z))
+            }
             PDF::Hittable(origin, hittable) => hittable.random(*origin),
             PDF::Mix(bias, pdf1, pdf2) => {
                 if random_f64(0.0..1.0) < *bias {

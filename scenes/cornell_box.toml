@@ -8,6 +8,10 @@ dist = 10.0
 vfov = 40.0
 aperture = 0.0
 
+[textures.specular]
+kind = "Solid"
+color = [1, 1, 1]
+
 [textures.red]
 kind = "Solid"
 color = [0.65, 0.05, 0.05]
@@ -22,12 +26,22 @@ color = [0.12, 0.45, 0.15]
 kind = "Lambertian"
 texture = "green"
 
-[textures.white]
+[textures.blue]
+kind = "Solid"
+color = [0.12, 0.15, 0.55]
+[materials.blue]
+kind = "Phong"
+kd = 0.8
+diffuse = "blue"
+specular = "specular"
+shininess = 8
+
+[textures.gray]
 kind = "Solid"
 color = [0.73, 0.73, 0.73]
-[materials.white]
+[materials.gray]
 kind = "Lambertian"
-texture = "white"
+texture = "gray"
 
 [textures.light]
 kind = "Solid"
@@ -65,28 +79,28 @@ k = 554
 
 [[objects]]
 kind = "Rect"
-material = "white"
+material = "gray"
 axis = "XZ"
 start = [0, 0]
 end = [555, 555]
 k = 0
 [[objects]]
 kind = "Rect"
-material = "white"
+material = "gray"
 axis = "XZ"
 start = [0, 0]
 end = [555, 555]
 k = 555
 [[objects]]
 kind = "Rect"
-material = "white"
+material = "gray"
 axis = "XY"
 start = [0, 0]
 end = [555, 555]
 k = 555
 [[objects]]
 kind = "Rect"
-material = "white"
+material = "gray"
 axis = "XY"
 start = [0, 0]
 end = [555, 555]
@@ -94,15 +108,21 @@ k = 555
 
 [[objects]]
 kind = "Block"
-material = "white"
+material = "gray"
 start = [0, 0, 0]
 end = [165, 333, 165]
 rotate = [0, 15, 0]
 translate = [265, 0, 295]
 
+# [[objects]]
+# kind = "Sphere"
+# material = "glass"
+# center = [190, 90, 190]
+# radius = 90
+
 [[objects]]
 kind = "Sphere"
-material = "glass"
+material = "blue"
 center = [190, 90, 190]
 radius = 90
 

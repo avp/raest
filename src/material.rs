@@ -3,11 +3,13 @@ use crate::geometry::{Hit, Ray};
 use crate::pdf::PDF;
 use crate::texture::Texture;
 use crate::util::*;
+use nalgebra::Unit;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum Material {
     Lambertian(Arc<Texture>),
+    Phong(f64, Arc<Texture>, Arc<Texture>, u32),
     Metal(Color, f64),
     Dielectric(f64),
     Emission(Arc<Texture>),
@@ -29,6 +31,29 @@ impl Material {
                     pdf: Some(pdf),
                     specular: None,
                 })
+            }
+            Material::Phong(kd, diffuse, specular, shininess) => {
+                if random_f64(0.0..1.0) < *kd {
+                    // Diffuse, use standard cosine PDF.
+                    let pdf = PDF::cosine(hit.normal);
+                    Some(Scatter {
+                        attenuation: diffuse.value(hit.uv, hit.point),
+                        pdf: Some(pdf),
+                        specular: None,
+                    })
+                } else {
+                    // Specular, use reflected ray as the normal.
+                    let reflect_dir = Unit::new_unchecked(reflect(
+                        inbound.dir.normalize(),
+                        hit.normal,
+                    ));
+                    let pdf = PDF::phong(hit.normal, reflect_dir, *shininess);
+                    Some(Scatter {
+                        attenuation: specular.value(hit.uv, hit.point),
+                        pdf: Some(pdf),
+                        specular: None,
+                    })
+                }
             }
             &Material::Metal(albedo, roughness) => {
                 let scatter_dir = reflect(inbound.dir.normalize(), hit.normal);
@@ -74,6 +99,7 @@ impl Material {
     pub fn emitted(&self, hit: &Hit) -> Color {
         match self {
             Material::Lambertian(..) => Color::zeros(),
+            Material::Phong(..) => Color::zeros(),
             Material::Metal(..) => Color::zeros(),
             Material::Dielectric(..) => Color::zeros(),
             Material::Emission(tex) => tex.value(hit.uv, hit.point),
