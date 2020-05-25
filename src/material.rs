@@ -1,5 +1,5 @@
 use crate::color::Color;
-use crate::geometry::{Hit, Ray, ONB};
+use crate::geometry::{Hit, Ray};
 use crate::pdf::PDF;
 use crate::texture::Texture;
 use crate::util::*;
@@ -68,17 +68,6 @@ impl Material {
                 })
             }
             Material::Emission(..) => None,
-        }
-    }
-
-    pub fn scatter_pdf(&self, _inbound: Ray, scattered: Ray, hit: &Hit) -> f64 {
-        match self {
-            Material::Lambertian(..) => {
-                PDF::cosine(hit.normal).value(scattered.dir)
-            }
-            Material::Metal(..) => 1.0,
-            Material::Dielectric(..) => 1.0,
-            Material::Emission(..) => 0.0,
         }
     }
 

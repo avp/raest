@@ -11,6 +11,7 @@ mod pdf;
 mod raytrace;
 mod renderer;
 mod texture;
+#[allow(dead_code)]
 mod util;
 
 mod color {

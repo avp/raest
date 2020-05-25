@@ -53,10 +53,10 @@ fn raytrace_rows(
     }
 }
 
-pub fn raytrace<'a>(
+pub fn raytrace<'scene>(
     config: Arc<Config>,
-    scene: &'a Scene,
-    camera: &'a Camera,
+    scene: &'scene Scene,
+    camera: &'scene Camera,
     buf: Arc<RwLock<Buffer>>,
 ) {
     let rows_per = (config.height / config.threads) + 1;
@@ -113,23 +113,37 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
                             depth + 1,
                         ));
                     }
-                    let cos_pdf = PDF::cosine(hit.normal);
-                    let light_pdf = PDF::hittable(hit.point, &scene.lights);
-                    let final_pdf = if scene.lights.is_empty() {
-                        cos_pdf
-                    } else {
-                        PDF::mix(0.75, &cos_pdf, &light_pdf)
-                    };
-                    let scatter_ray = Ray {
-                        origin: hit.point,
-                        dir: final_pdf.gen(),
-                    };
-                    let mat_pdf =
-                        hit.material.scatter_pdf(ray, scatter_ray, &hit);
-                    let color = ray_color(scene, scatter_ray, depth + 1);
-                    emit + scatter.attenuation.component_mul(&color)
-                        * mat_pdf
-                        * final_pdf.value(scatter_ray.dir).recip()
+                    if let Some(scatter_pdf) = scatter.pdf {
+                        let cos_pdf = PDF::cosine(hit.normal);
+                        let light_pdf = PDF::hittable(hit.point, &scene.lights);
+                        let final_pdf = if scene.lights.is_empty() {
+                            cos_pdf
+                        } else {
+                            PDF::mix(0.75, &cos_pdf, &light_pdf)
+                        };
+                        let scatter_ray = Ray {
+                            origin: hit.point,
+                            dir: final_pdf.gen(),
+                        };
+                        let color = ray_color(scene, scatter_ray, depth + 1);
+                        // The final value is the emission plus the MC estimate:
+                        // attenuation * color(dir) * (s(dir) / p(dir))
+                        // where `s` is the scattering PDF and `p` is the
+                        // PDF we used to generate the direction.
+                        // In Lambertian surfaces without MIS, for example,
+                        // s(dir) and p(dir) are both cos(theta) where theta
+                        // is the angle between the normal and dir, so those
+                        // ordinarily cancel.
+                        // Adding MIS mixes the final_pdf which we used to
+                        // generate the scatter_ray, which throws off the
+                        // calculation so we actually do need to do the division
+                        // now.
+                        return emit
+                            + scatter.attenuation.component_mul(&color)
+                                * scatter_pdf.value(scatter_ray.dir)
+                                * final_pdf.value(scatter_ray.dir).recip();
+                    }
+                    Color::zeros()
                 }
             }
         }
