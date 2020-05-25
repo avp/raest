@@ -118,7 +118,7 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
                     let final_pdf = if scene.lights.is_empty() {
                         cos_pdf
                     } else {
-                        PDF::mix(&cos_pdf, &light_pdf)
+                        PDF::mix(0.75, &cos_pdf, &light_pdf)
                     };
                     let scatter_ray = Ray {
                         origin: hit.point,
@@ -138,11 +138,14 @@ fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
 }
 
 fn write_color(config: &Config, color: Color) -> u32 {
-    let correct = |x: f64| -> u32 {
+    let correct = |mut x: f64| -> u32 {
+        if x.is_nan() {
+            x = 0.0;
+        }
         let scale = 1.0 / config.samples as f64;
         const GAMMA: f64 = 2.0;
-        let x2 = (scale * x).powf(1.0 / GAMMA).clamp(0.0, 0.9999);
-        (x2 * 256.0f64) as u8 as u32
+        let x2 = (scale * x).powf(1.0 / GAMMA).clamp(0.0, 0.999);
+        (x2 * 255.0f64) as u8 as u32
     };
     (correct(color[0]) << 16) | (correct(color[1]) << 8) | correct(color[2])
 }

@@ -1,5 +1,7 @@
 use super::{Hit, Hittable, Point, Ray, Vector, AABB};
+use crate::geometry::onb::ONB;
 use crate::material::Material;
+use crate::util::*;
 use nalgebra::Unit;
 use std::f64::consts::PI;
 use std::ops::Range;
@@ -29,6 +31,7 @@ impl Hittable for Sphere {
     fn is_light(&self) -> bool {
         match self.material.as_ref() {
             Material::Emission(..) => true,
+            Material::Dielectric(..) => true,
             _ => false,
         }
     }
@@ -78,6 +81,25 @@ impl Hittable for Sphere {
             ))
         }
     }
+
+    fn pdf(&self, ray: Ray) -> f64 {
+        match self.hit(ray, 0.0001..f64::INFINITY) {
+            None => 0.0,
+            Some(_hit) => {
+                let norm_squared = (self.center - ray.origin).norm_squared();
+                let cos_theta_max =
+                    (1.0 - self.radius * self.radius / norm_squared).sqrt();
+                let solid_angle = 2.0 * PI * (1.0 - cos_theta_max);
+                1.0 / solid_angle
+            }
+        }
+    }
+
+    fn random(&self, origin: Point) -> Vector {
+        let dir = self.center - origin;
+        let uvw = ONB::from_w(Unit::new_normalize(dir));
+        uvw.localize(self.random_to_sphere(dir))
+    }
 }
 
 impl Sphere {
@@ -87,5 +109,21 @@ impl Sphere {
         let u = 1.0 - (phi + PI) / (2.0 * PI);
         let v = (theta + PI / 2.0) / PI;
         (u, v)
+    }
+
+    fn random_to_sphere(&self, dir: Vector) -> Vector {
+        let norm_squared = dir.norm_squared();
+        let r1 = random_f64(0.0..1.0);
+        let r2 = random_f64(0.0..1.0);
+        let z = 1.0
+            + r2 * ((1.0 - self.radius * self.radius / norm_squared).sqrt()
+                - 1.0);
+
+        let phi = 2.0 * PI * r1;
+        let fac = (1.0 - z * z).sqrt();
+        let x = phi.cos() * fac;
+        let y = phi.sin() * fac;
+
+        Vector::new(x, y, z)
     }
 }

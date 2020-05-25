@@ -8,7 +8,7 @@ use std::f64::consts::PI;
 pub enum PDF<'scene> {
     Cosine(ONB),
     Hittable(Point, &'scene dyn Hittable),
-    Mix(&'scene PDF<'scene>, &'scene PDF<'scene>),
+    Mix(f64, &'scene PDF<'scene>, &'scene PDF<'scene>),
 }
 
 impl<'scene> PDF<'scene> {
@@ -23,8 +23,8 @@ impl<'scene> PDF<'scene> {
         PDF::Hittable(origin, hittable)
     }
 
-    pub fn mix(pdf1: &'scene PDF, pdf2: &'scene PDF) -> PDF<'scene> {
-        PDF::Mix(pdf1, pdf2)
+    pub fn mix(bias: f64, pdf1: &'scene PDF, pdf2: &'scene PDF) -> PDF<'scene> {
+        PDF::Mix(bias, pdf1, pdf2)
     }
 
     /// Computes the value of the PDF in the direction of `dir`.
@@ -42,8 +42,8 @@ impl<'scene> PDF<'scene> {
                 origin: *origin,
                 dir,
             }),
-            PDF::Mix(pdf1, pdf2) => {
-                0.5 * pdf1.value(dir) + 0.5 * pdf2.value(dir)
+            PDF::Mix(bias, pdf1, pdf2) => {
+                bias * pdf1.value(dir) + (1.0 - bias) * pdf2.value(dir)
             }
         }
     }
@@ -53,8 +53,8 @@ impl<'scene> PDF<'scene> {
         match self {
             PDF::Cosine(uvw) => uvw.localize(random_cosine_dir()),
             PDF::Hittable(origin, hittable) => hittable.random(*origin),
-            PDF::Mix(pdf1, pdf2) => {
-                if random_f64(0.0..1.0) < 0.5 {
+            PDF::Mix(bias, pdf1, pdf2) => {
+                if random_f64(0.0..1.0) < *bias {
                     pdf1.gen()
                 } else {
                     pdf2.gen()

@@ -37,9 +37,11 @@ pub trait Hittable: Send + Sync {
     fn bounding_box(&self) -> AABB;
     fn hit(&self, ray: Ray, range: Range<f64>) -> Option<Hit>;
     fn pdf(&self, _ray: Ray) -> f64 {
+        eprintln!("Warning: Attempting to sample PDF for unimplemented object");
         0.0
     }
     fn random(&self, _origin: Point) -> Vector {
+        eprintln!("Warning: Attempting to sample PDF for unimplemented object");
         Vector::x()
     }
 }
