@@ -136,9 +136,9 @@ impl Hittable for Rect {
     fn random(&self, origin: Point) -> Vector {
         const EPS: f64 = 0.0001;
         let rand_point = Point::new(
-            random_f64(self.p1.x - EPS..self.p2.x + EPS),
-            random_f64(self.p1.y - EPS..self.p2.y + EPS),
-            random_f64(self.p1.z - EPS..self.p2.z + EPS),
+            random_range(self.p1.x - EPS..self.p2.x + EPS),
+            random_range(self.p1.y - EPS..self.p2.y + EPS),
+            random_range(self.p1.z - EPS..self.p2.z + EPS),
         );
         rand_point - origin
     }

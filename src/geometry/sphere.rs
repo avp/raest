@@ -113,8 +113,8 @@ impl Sphere {
 
     fn random_to_sphere(&self, dir: Vector) -> Vector {
         let norm_squared = dir.norm_squared();
-        let r1 = random_f64(0.0..1.0);
-        let r2 = random_f64(0.0..1.0);
+        let r1 = random();
+        let r2 = random();
         let z = 1.0
             + r2 * ((1.0 - self.radius * self.radius / norm_squared).sqrt()
                 - 1.0);

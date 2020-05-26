@@ -99,32 +99,28 @@ impl Scene {
 
         for a in -count..count {
             for b in -count..count {
-                let mat_rand = random_f64(0.0..1.0);
+                let mat_rand = random();
                 let center = Point::new(
-                    a as f64 + 0.9 * random_f64(0.0..1.0),
+                    a as f64 + 0.9 * random(),
                     0.2,
-                    b as f64 + 0.9 * random_f64(0.0..1.0),
+                    b as f64 + 0.9 * random(),
                 );
 
                 if (center - Vector::new(4.0, 0.2, 0.0)).coords.norm() > 0.9 {
                     let material;
 
                     if mat_rand < 0.8 {
-                        let albedo = Color::new(
-                            random_f64(0.0..1.0),
-                            random_f64(0.0..1.0),
-                            random_f64(0.0..1.0),
-                        );
+                        let albedo = Color::new(random(), random(), random());
                         material = Arc::new(Material::Lambertian(Arc::new(
                             Texture::Solid(albedo),
                         )));
                     } else if mat_rand < 0.95 {
                         let albedo = Color::new(
-                            random_f64(0.5..1.0),
-                            random_f64(0.5..1.0),
-                            random_f64(0.5..1.0),
+                            random_range(0.5..1.0),
+                            random_range(0.5..1.0),
+                            random_range(0.5..1.0),
                         );
-                        let fuzz = random_f64(0.0..0.5);
+                        let fuzz = random_range(0.0..0.5);
                         material = Arc::new(Material::Metal(albedo, fuzz));
                     } else {
                         material = Arc::new(Material::Dielectric(1.5));

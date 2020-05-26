@@ -25,16 +25,15 @@ fn raytrace_rows(
 ) {
     // Buffer the rows before writing them to `buf` to avoid too much contention
     // on the lock.
-    let mut tracer = UDPT::new(scene);
     let mut row_backlog: Vec<(usize, Vec<u32>)> = vec![];
+    let mut tracer = UDPT::new(scene);
     for r in rows {
         let mut row: Vec<u32> = vec![0; config.width];
         for (c, result) in row.iter_mut().enumerate() {
             let mut color_sum = Color::zeros();
             for _ in 0..config.samples {
-                let u = (c as f64 + random_f64(0.0..1.0))
-                    / (config.width as f64 - 1.0);
-                let v = ((config.height - r) as f64 + random_f64(0.0..1.0))
+                let u = (c as f64 + random()) / (config.width as f64 - 1.0);
+                let v = ((config.height - r) as f64 + random())
                     / (config.height as f64 - 1.0);
                 let ray = camera.get_ray(u, v);
                 color_sum += tracer.sample(ray);

@@ -68,8 +68,8 @@ impl<'scene> PDF<'scene> {
             PDF::Cosine(uvw) => uvw.localize(random_cosine_dir()),
             PDF::Phong(uvw, _outbound, n) => {
                 // https://www.cs.princeton.edu/courses/archive/fall16/cos526/papers/importance.pdf
-                let r1 = random_f64(0.0..1.0);
-                let r2 = random_f64(0.0..1.0);
+                let r1 = random();
+                let r2 = random();
                 let cos_alpha = r1.powf(((n + 1) as f64).recip());
                 let sin_alpha = (1.0 - cos_alpha).sqrt();
                 let phi = 2.0 * PI * r2;
@@ -80,7 +80,7 @@ impl<'scene> PDF<'scene> {
             }
             PDF::Hittable(origin, hittable) => hittable.random(*origin),
             PDF::Mix(bias, pdf1, pdf2) => {
-                if random_f64(0.0..1.0) < *bias {
+                if random() < *bias {
                     pdf1.gen()
                 } else {
                     pdf2.gen()

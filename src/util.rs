@@ -4,34 +4,39 @@ use std::f64::consts::PI;
 use nalgebra::Unit;
 use std::ops::Range;
 
-pub fn random_f64(range: Range<f64>) -> f64 {
+pub fn random() -> f64 {
+    use rand::Rng;
+    rand::thread_rng().gen()
+}
+
+pub fn random_range(range: Range<f64>) -> f64 {
     use rand::Rng;
     rand::thread_rng().gen_range(range.start, range.end)
 }
 
 pub fn random_in_unit_disc() -> Vector {
-    let theta = random_f64(0.0..2.0 * PI);
-    let r = random_f64(0.0..1.0);
+    let theta = random_range(0.0..2.0 * PI);
+    let r = random();
     Vector::new(r * theta.cos(), r * theta.sin(), 0.0)
 }
 
 pub fn random_unit_vector() -> Vector {
-    let a = random_f64(0.0..2.0 * PI);
-    let z = random_f64(-1.0..1.0);
+    let a = random_range(0.0..2.0 * PI);
+    let z = random_range(-1.0..1.0);
     let r = (1.0 - z * z).sqrt();
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
 
 pub fn random_in_unit_sphere() -> Vector {
-    let a = random_f64(0.0..2.0 * PI);
-    let z = random_f64(-1.0..1.0);
+    let a = random_range(0.0..2.0 * PI);
+    let z = random_range(-1.0..1.0);
     let r = (1.0 - z * z).sqrt();
     Vector::new(r * a.cos(), r * a.sin(), z)
 }
 
 pub fn random_cosine_dir() -> Vector {
-    let r1 = random_f64(0.0..1.0);
-    let r2 = random_f64(0.0..1.0);
+    let r1 = random();
+    let r2 = random();
     let z = (1.0 - r2).sqrt();
 
     let phi = 2.0 * PI * r1;

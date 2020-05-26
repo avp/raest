@@ -33,7 +33,7 @@ impl Material {
                 })
             }
             Material::Phong(kd, diffuse, specular, shininess) => {
-                if random_f64(0.0..1.0) < *kd {
+                if random() < *kd {
                     // Diffuse, use standard cosine PDF.
                     let pdf = PDF::cosine(hit.normal);
                     Some(Scatter {
@@ -75,7 +75,7 @@ impl Material {
                 let sin_theta = (1.0 - (cos_theta * cos_theta)).sqrt();
 
                 let scatter_dir = if (eta * sin_theta) > 1.0
-                    || random_f64(0.0..1.0) < schlick(cos_theta, ior)
+                    || random() < schlick(cos_theta, ior)
                 {
                     // Must reflect.
                     reflect(dir, hit.normal)
