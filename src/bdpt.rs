@@ -329,15 +329,15 @@ impl<'s> BDPT<'s> {
     }
 
     fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> Option<Hit> {
-        let eps = 1.0;
+        let eps = 0.1;
         let (p1, p2) =
             (v1.point + eps * *v1.normal, v2.point + eps * *v2.normal);
         let ray = Ray {
             origin: p1,
             dir: p2 - p1,
         };
-        let tmin = eps;
-        let tmax = ray.dir.norm() - eps;
+        let tmin = 0.0;
+        let tmax = 1.0;
         self.scene.hit(ray, tmin..tmax)
     }
 
