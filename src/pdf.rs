@@ -32,7 +32,11 @@ impl<'scene> PDF<'scene> {
         PDF::Hittable(origin, hittable)
     }
 
-    pub fn mix(bias: f64, pdf1: &'scene PDF, pdf2: &'scene PDF) -> PDF<'scene> {
+    pub fn mix(
+        bias: f64,
+        pdf1: &'scene PDF<'scene>,
+        pdf2: &'scene PDF<'scene>,
+    ) -> PDF<'scene> {
         PDF::Mix(bias, pdf1, pdf2)
     }
 

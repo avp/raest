@@ -72,7 +72,7 @@ impl<'scene> UDPT<'scene> {
 }
 
 impl<'scene> Tracer for UDPT<'scene> {
-    fn sample(&mut self, ray: Ray) -> Color {
+    fn sample(&mut self, ray: Ray, _debug: bool) -> Color {
         self.ray_color(ray, 0)
     }
 }

@@ -153,7 +153,8 @@ impl Hittable for Rect {
         );
         Ray {
             origin: rand_point,
-            dir: if random() < 0.5 { -1.0 * dir } else { dir },
+            // TODO: Properly use normals here.
+            dir: -1.0 * dir,
         }
     }
 }
