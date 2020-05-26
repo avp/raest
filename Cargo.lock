@@ -629,6 +629,7 @@ dependencies = [
 name = "raest"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "crossbeam",
  "image",
  "minifb",

@@ -156,7 +156,7 @@ impl Hittable for Rect {
             // TODO: Properly use normals here.
             dir,
         };
-        let normal = Unit::new_normalize(dir);
+        let normal = Unit::new_unchecked(-1.0 * *self.axis.unit());
         (
             ray,
             normal,

@@ -46,7 +46,7 @@ texture = "gray"
 
 [textures.light]
 kind = "Solid"
-color = [1, 1, 1]
+color = [15, 15, 15]
 [materials.light]
 kind = "Emission"
 texture = "light"
@@ -134,3 +134,11 @@ start = [0, 0, 0]
 end = [165, 165, 165]
 rotate = [0, -18, 0]
 translate = [130, 0, 65]
+
+# Single central block.
+
+# [[objects]]
+# kind = "Block"
+# material = "gray"
+# start = [200, 0, 200]
+# end = [350, 150, 350]

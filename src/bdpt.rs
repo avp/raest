@@ -2,26 +2,28 @@ use crate::color::Color;
 use crate::geometry::*;
 use crate::raytrace::Tracer;
 use crate::util::*;
+use approx::AbsDiffEq;
 use nalgebra::Unit;
 use std::f64::consts::PI;
 
 /// Bidirectional Path Tracer.
 pub struct BDPT<'s> {
     scene: &'s Scene,
+    samples: u32,
 }
 
 const MIN_DEPTH: u32 = 3;
 const MAX_CAMERA_DEPTH: u32 = 10;
 const MAX_LIGHT_DEPTH: u32 = 10;
-const EPS: f64 = 0.00001;
 
 impl<'s> BDPT<'s> {
     #[allow(dead_code)]
-    pub fn new(scene: &'s Scene) -> BDPT {
-        BDPT { scene }
+    pub fn new(scene: &'s Scene, samples: u32) -> BDPT {
+        BDPT { scene, samples }
     }
 
     fn ray_color(&self, ray: Ray, _debug: bool) -> Color {
+        let mut result = Color::zeros();
         let camera_path = self.random_walk(
             WalkKind::Camera,
             ray,
@@ -29,18 +31,44 @@ impl<'s> BDPT<'s> {
             Color::new(1.0, 1.0, 1.0),
             MAX_CAMERA_DEPTH,
         );
-        let mut result = Color::zeros();
         if camera_path.len() == 1 {
             return self.scene.background;
         }
-        if camera_path.len() == 2 && camera_path[1].kind == VertexKind::Light {
-            return camera_path[1].beta;
+        if camera_path.len() == 2 && camera_path[1].kind.is_light() {
+            return camera_path[1].throughput;
         }
         let light_path = self.gen_light_path();
+        if _debug {
+            for v in &camera_path {
+                println!(
+                    "CAM: {:?} {:?} {:?}",
+                    v.point, v.normal, v.throughput
+                );
+            }
+            for v in &light_path {
+                println!(
+                    "LGT: {:?} {:?} {:?}",
+                    v.point, v.normal, v.throughput
+                );
+            }
+        }
         for t in 2..=camera_path.len() - 1 {
             for s in 0..=light_path.len() - 1 {
-                result += self.join_path(&camera_path, &light_path, t, s);
+                let (unweighted, weight) =
+                    self.join_path(&camera_path, &light_path, t, s, _debug);
+                let color = unweighted * weight;
+                result += color;
+                if _debug {
+                    println!(
+                        "COL({}, {}): {:?} {}, {:?}",
+                        t, s, unweighted, weight, color,
+                    );
+                    println!("RES({}, {}): {:?}", t, s, result);
+                }
             }
+        }
+        if _debug {
+            println!("DONE!");
         }
         result
     }
@@ -52,10 +80,30 @@ impl<'s> BDPT<'s> {
         light_path: &[Vertex],
         t: usize,
         s: usize,
-    ) -> Color {
+        _debug: bool,
+    ) -> (Color, f64) {
         if s > 0 {
-            if !self.test_visibility(&camera_path[t - 1], &light_path[s - 1]) {
-                return Color::zeros();
+            if !self
+                .test_visibility(&camera_path[t - 1], &light_path[s - 1])
+                .is_none()
+            {
+                // if _debug {
+                //     dbg!(
+                //         camera_path[t - 1].point,
+                //         camera_path[t - 1].normal,
+                //         light_path[s - 1].point,
+                //         light_path[s - 1].normal,
+                //     );
+                //     dbg!(
+                //         self.test_visibility(
+                //             &camera_path[t - 1],
+                //             &light_path[s - 1]
+                //         )
+                //         .unwrap()
+                //         .point
+                //     );
+                // }
+                return (Color::zeros(), 0.0);
             }
         }
         let (w_camera, w_light) = if t > 1 && s > 1 {
@@ -90,16 +138,25 @@ impl<'s> BDPT<'s> {
         } else {
             unreachable!();
         };
-        let (vt, vs) = (
-            camera_path[t - 1].beta,
-            if s > 0 {
-                light_path[s - 1].beta
-            } else {
-                Color::new(1.0, 1.0, 1.0)
-            },
-        );
         let w_st = (w_camera + 1.0 + w_light).recip();
-        (vt).component_mul(&(vs)) * w_st
+        if s == 0 {
+            return (camera_path[t - 1].throughput, w_st);
+        }
+        let (v_cam, v_light) = (&camera_path[t - 1], &light_path[s - 1]);
+        let d = v_light.point - v_cam.point;
+        let d_norm = d.normalize();
+        let vt_cos = v_cam.normal.dot(&d_norm).abs();
+        let vs_cos = v_light.normal.dot(&d_norm).abs();
+        let g = v_cam.throughput.component_mul(&v_light.throughput);
+        let ft = v_cam.f(Ray {
+            origin: camera_path[t - 2].point,
+            dir: camera_path[t - 1].point - camera_path[t - 2].point,
+        });
+        let fs = v_light.f(Ray {
+            origin: camera_path[t - 1].point,
+            dir: light_path[s - 1].point - camera_path[t - 1].point,
+        });
+        (g, w_st)
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
@@ -112,9 +169,11 @@ impl<'s> BDPT<'s> {
         kind: WalkKind,
         ray: Ray,
         normal: Unit<Vector>,
-        mut beta: Color,
-        mut depth: u32,
+        mut throughput: Color,
+        depth: u32,
     ) -> Vec<Vertex> {
+        const EPS: f64 = 0.001;
+
         if depth == 0 {
             return vec![];
         }
@@ -125,7 +184,7 @@ impl<'s> BDPT<'s> {
                 VertexKind::Camera,
                 ray.origin,
                 normal,
-                beta,
+                throughput,
                 EPS,
                 EPS,
                 1.0,
@@ -135,7 +194,7 @@ impl<'s> BDPT<'s> {
                 VertexKind::Light,
                 ray.origin,
                 normal,
-                beta,
+                throughput,
                 EPS,
                 EPS,
                 PI,
@@ -146,40 +205,30 @@ impl<'s> BDPT<'s> {
 
         while result.len() < depth as usize {
             if result.len() > MIN_DEPTH as usize {
-                let q = f64::min(1.0, beta.norm() / prev.pdf_fwd);
+                let q = f64::min(1.0, throughput.norm() / prev.pdf_fwd);
                 if random() > q {
                     break;
                 }
             }
             match self.scene.hit(ray, 0.0001..f64::INFINITY) {
                 None => {
-                    beta = beta.component_mul(&self.scene.background);
-                    prev.beta = beta;
+                    throughput =
+                        throughput.component_mul(&self.scene.background);
+                    prev.throughput = throughput;
                     prev.pdf_rev = 0.0;
-                    result.push(prev);
-                    prev = Vertex::new(
-                        VertexKind::Surface,
-                        Point::origin(),
-                        Vector::x_axis(),
-                        beta,
-                        EPS,
-                        EPS,
-                        1.0,
-                        1.0,
-                    );
                     break;
                 }
                 Some(hit) => {
                     let emit = hit.material.emitted(&hit);
                     if emit.norm_squared() > 0.0 {
-                        beta = beta.component_mul(&emit);
+                        throughput = throughput.component_mul(&emit);
                         prev.pdf_rev = 0.0;
                         result.push(prev);
                         prev = Vertex::new(
                             VertexKind::Light,
                             hit.point,
                             hit.normal,
-                            beta,
+                            throughput,
                             EPS,
                             EPS,
                             1.0,
@@ -193,11 +242,13 @@ impl<'s> BDPT<'s> {
                             prev.pdf_rev = 0.0;
                             result.push(prev);
                             // TODO: Fix this.
+                            let point = hit.point;
+                            let normal = hit.normal;
                             prev = Vertex::new(
-                                VertexKind::Surface,
-                                hit.point,
-                                hit.normal,
-                                beta,
+                                VertexKind::Surface(hit),
+                                point,
+                                normal,
+                                throughput,
                                 EPS,
                                 EPS,
                                 1.0,
@@ -216,23 +267,10 @@ impl<'s> BDPT<'s> {
                             let p_i = pdf_fwd * g_fwd;
                             prev.pdf_rev =
                                 scatter_pdf.value(prev.point - hit.point);
-                            let vcm = pdf_fwd.recip();
-                            let g_prev =
-                                self.g(prev.point, prev.normal, hit.point);
-                            prev.g_rev =
-                                scatter_pdf.value(prev.point - hit.point);
-                            let vc = match result.last() {
-                                Some(v) => {
-                                    g_prev / p_i
-                                        * (prev.vcm + v.pdf_rev * prev.vc)
-                                }
-                                None => g_prev / p_i * prev.vcm,
-                            };
-                            beta = beta.component_mul(&scatter.attenuation);
                             if result.is_empty() {
                                 match kind {
                                     WalkKind::Camera => {
-                                        prev.vcm = 250.0 / p_i.recip();
+                                        prev.vcm = p_i.recip();
                                         prev.vc = 0.0;
                                     }
                                     WalkKind::Light => {
@@ -242,12 +280,37 @@ impl<'s> BDPT<'s> {
                                     }
                                 }
                             }
+                            let vcm = pdf_fwd.recip();
+                            let g_prev =
+                                self.g(prev.point, prev.normal, hit.point);
+                            prev.g_rev = g_prev;
+                            let vc = match result.last() {
+                                Some(v) => {
+                                    g_prev / p_i
+                                        * (prev.vcm + v.pdf_rev * prev.vc)
+                                }
+                                None => g_prev / p_i * prev.vcm,
+                            };
+                            throughput =
+                                throughput.component_mul(&scatter.attenuation);
+                            // throughput = match kind {
+                            //     WalkKind::Camera => throughput
+                            //         .component_mul(&scatter.attenuation),
+                            //     WalkKind::Light => {
+                            //         throughput
+                            //             .component_mul(&scatter.attenuation)
+                            //             * scatter_ray .dir .normalize()
+                            //               .dot(&hit.normal) .abs()
+                            //     }
+                            // };
                             result.push(prev);
+                            let point = hit.point;
+                            let normal = hit.normal;
                             prev = Vertex::new(
-                                VertexKind::Surface,
-                                hit.point,
-                                hit.normal,
-                                beta,
+                                VertexKind::Surface(hit),
+                                point,
+                                normal,
+                                throughput,
                                 pdf_fwd,
                                 g_fwd,
                                 vcm,
@@ -265,16 +328,17 @@ impl<'s> BDPT<'s> {
         result
     }
 
-    fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> bool {
+    fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> Option<Hit> {
+        let eps = 1.0;
         let (p1, p2) =
-            (v1.point + EPS * *v1.normal, v2.point + EPS * *v2.normal);
+            (v1.point + eps * *v1.normal, v2.point + eps * *v2.normal);
         let ray = Ray {
             origin: p1,
             dir: p2 - p1,
         };
-        let tmin = EPS;
-        let tmax = ray.dir.norm() - EPS;
-        self.scene.hit(ray, tmin..tmax).is_none()
+        let tmin = eps;
+        let tmax = ray.dir.norm() - eps;
+        self.scene.hit(ray, tmin..tmax)
     }
 
     /// g_i(y) term in the light transport equation.
@@ -303,19 +367,27 @@ enum WalkKind {
     Light,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum VertexKind {
+enum VertexKind<'s> {
     Camera,
     Light,
-    Surface,
+    Surface(Hit<'s>),
 }
 
-#[derive(Debug, Clone)]
-struct Vertex {
-    pub kind: VertexKind,
+impl<'s> VertexKind<'s> {
+    fn is_light(&self) -> bool {
+        if let VertexKind::Light = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+struct Vertex<'s> {
+    pub kind: VertexKind<'s>,
     pub normal: Unit<Vector>,
     pub point: Point,
-    pub beta: Color,
+    pub throughput: Color,
     pub pdf_fwd: f64,
     pub g_fwd: f64,
     pub pdf_rev: f64,
@@ -324,12 +396,12 @@ struct Vertex {
     pub vc: f64,
 }
 
-impl Vertex {
+impl<'s> Vertex<'s> {
     pub fn new(
-        kind: VertexKind,
+        kind: VertexKind<'s>,
         point: Point,
         normal: Unit<Vector>,
-        beta: Color,
+        throughput: Color,
         pdf_fwd: f64,
         g_fwd: f64,
         vcm: f64,
@@ -339,13 +411,25 @@ impl Vertex {
             kind,
             normal,
             point,
-            beta,
+            throughput,
             pdf_fwd,
             g_fwd,
             pdf_rev: 0.0,
             g_rev: 0.0,
             vcm,
             vc,
+        }
+    }
+
+    pub fn f(&self, inbound: Ray) -> Color {
+        match &self.kind {
+            VertexKind::Light => self.throughput,
+            VertexKind::Surface(hit) => {
+                let mat = hit.material;
+                let color = mat.scatter(&inbound, &hit).unwrap().attenuation;
+                color
+            }
+            VertexKind::Camera => Color::zeros(),
         }
     }
 }
