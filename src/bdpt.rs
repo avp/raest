@@ -1,6 +1,7 @@
 use crate::color::Color;
 use crate::geometry::*;
 use crate::raytrace::Tracer;
+use crate::util::*;
 use nalgebra::Unit;
 
 /// Bidirectional Path Tracer.
@@ -8,7 +9,7 @@ pub struct BDPT<'s> {
     scene: &'s Scene,
 }
 
-const MAX_CAMERA_DEPTH: u32 = 5;
+const MAX_CAMERA_DEPTH: u32 = 10;
 const MAX_LIGHT_DEPTH: u32 = 5;
 
 impl<'s> BDPT<'s> {
@@ -31,9 +32,7 @@ impl<'s> BDPT<'s> {
         }
         for t in 1..=camera_path.len() - 1 {
             for s in 0..=light_path.len() - 1 {
-                let w = (s + t + 1) as f64;
-                result +=
-                    self.join_path(&camera_path, &light_path, t, s) * w.recip();
+                result += self.join_path(&camera_path, &light_path, t, s);
             }
         }
         result
@@ -54,7 +53,69 @@ impl<'s> BDPT<'s> {
                 return Color::zeros();
             }
         }
-        vt.beta.component_mul(&vs.beta) * ((1 + s + t) as f64).recip()
+        let (w_camera, w_light) = if t > 1 && s > 1 {
+            (
+                camera_path[t - 1].pdf_rev
+                    * (camera_path[t - 1].vcm
+                        * camera_path[t - 2].pdf_rev
+                        * camera_path[t - 1].vc),
+                light_path[s - 1].pdf_rev
+                    * (light_path[s - 1].vcm
+                        * light_path[s - 2].pdf_rev
+                        * light_path[s - 1].vc),
+            )
+        } else if t == 1 && s == 1 {
+            (
+                camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm,
+                light_path[0].pdf_rev / light_path[0].pdf_fwd,
+            )
+        } else if t == 1 && s == 0 {
+            (camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm, 0.0)
+        } else if s == 0 {
+            assert!(t > 1);
+            (
+                camera_path[t - 1].pdf_rev
+                    * (camera_path[t - 1].vcm
+                        * camera_path[t - 2].pdf_rev
+                        * camera_path[t - 1].vc),
+                0.0,
+            )
+        } else if s == 1 {
+            assert!(t > 1);
+            (
+                camera_path[t - 1].pdf_rev
+                    * (camera_path[t - 1].vcm
+                        * camera_path[t - 2].pdf_rev
+                        * camera_path[t - 1].vc),
+                light_path[0].pdf_rev / light_path[0].pdf_fwd,
+            )
+        } else {
+            assert!(t == 1);
+            (
+                camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm,
+                light_path[s - 1].pdf_rev / (100.0)
+                    * (light_path[s - 1].pdf_rev
+                        + light_path[s - 2].pdf_rev * light_path[s - 1].vc),
+            )
+        };
+        let (w_camera, w_light): (f64, f64) = (t as f64, s as f64);
+        let w_st = (w_camera + 1.0 + w_light).recip();
+        // if w_camera > 10000.0 {
+        //     dbg!(
+        //         t,
+        //         s,
+        //         &camera_path[t],
+        //         &light_path[s],
+        //         vt.beta,
+        //         vs.beta,
+        //         w_camera,
+        //         w_light,
+        //         w_st
+        //     );
+
+        //     unreachable!();
+        // }
+        (w_camera * vt.beta).component_mul(&(w_light * vs.beta)) * w_st
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
@@ -80,13 +141,17 @@ impl<'s> BDPT<'s> {
                 Unit::new_normalize(ray.dir),
                 ray.origin,
                 beta,
+                0.00001,
                 1.0,
+                0.0,
             ),
             WalkKind::Light => Vertex::new(
                 VertexKind::Light,
                 Unit::new_normalize(ray.dir),
                 ray.origin,
                 beta,
+                0.00001,
+                1.0,
                 1.0,
             ),
         };
@@ -94,19 +159,27 @@ impl<'s> BDPT<'s> {
         depth -= 1;
 
         while result.len() < depth as usize {
+            if result.len() > 3 {
+                let q = f64::min(1.0, beta.norm() / prev.pdf_fwd);
+                if random() > q {
+                    break;
+                }
+            }
             match self.scene.hit(ray, 0.0001..f64::INFINITY) {
                 None => break,
                 Some(hit) => {
                     let emit = hit.material.emitted(&hit);
                     if emit.norm_squared() > 0.0 {
                         beta = beta.component_mul(&emit);
-                        prev.pdf_rev = 1.0;
+                        prev.pdf_rev = 0.0;
                         result.push(prev);
                         prev = Vertex::new(
                             VertexKind::Light,
                             hit.normal,
                             hit.point,
                             beta,
+                            0.000001,
+                            1.0,
                             1.0,
                         );
                         break;
@@ -116,11 +189,14 @@ impl<'s> BDPT<'s> {
                             ray = specular;
                             prev.pdf_rev = 0.0;
                             result.push(prev);
+                            // TODO: Fix this.
                             prev = Vertex::new(
                                 VertexKind::Surface,
                                 hit.normal,
                                 hit.point,
                                 beta,
+                                0.000001,
+                                1.0,
                                 1.0,
                             );
                             continue;
@@ -130,12 +206,23 @@ impl<'s> BDPT<'s> {
                                 origin: hit.point,
                                 dir: scatter_pdf.gen(),
                             };
-                            let g = self.g(&prev, hit.point);
-                            let pdf_fwd =
-                                scatter_pdf.value(scatter_ray.dir) * g;
-                            beta = beta.component_mul(&scatter.attenuation);
+                            let g_fwd =
+                                self.g(hit.point, hit.normal, prev.point);
+                            let pdf_fwd = scatter_pdf.value(scatter_ray.dir);
+                            let p_i = pdf_fwd * g_fwd;
                             prev.pdf_rev =
-                                scatter_pdf.value(ray.origin - hit.point);
+                                scatter_pdf.value(prev.point - hit.point);
+                            let vcm = pdf_fwd.recip();
+                            let g_prev =
+                                self.g(prev.point, prev.normal, hit.point);
+                            let vc = match result.last() {
+                                Some(v) => {
+                                    g_prev / p_i
+                                        * (prev.vcm + v.pdf_rev * prev.vc)
+                                }
+                                None => g_prev / p_i * prev.vcm,
+                            };
+                            beta = beta.component_mul(&scatter.attenuation);
                             result.push(prev);
                             prev = Vertex::new(
                                 VertexKind::Surface,
@@ -143,6 +230,8 @@ impl<'s> BDPT<'s> {
                                 hit.point,
                                 beta,
                                 pdf_fwd,
+                                vcm,
+                                vc,
                             );
                             ray = scatter_ray;
                             continue;
@@ -175,11 +264,10 @@ impl<'s> BDPT<'s> {
     /// connecting the vertices.
     /// Forward g_i is calculated by providing vertex i and i-1.
     /// Reverse g_i is calculated by providing vertex i and i+1.
-    fn g(&self, v1: &Vertex, v2: Point) -> f64 {
-        let (p1, p2) = (v1.point, v2);
+    fn g(&self, p1: Point, n: Unit<Vector>, p2: Point) -> f64 {
         let d = p2 - p1;
         let d_normalized = d.normalize();
-        let cos_theta = v1.normal.dot(&d_normalized);
+        let cos_theta = n.dot(&d_normalized);
         cos_theta / d.norm_squared()
     }
 }
@@ -203,6 +291,7 @@ enum VertexKind {
     Surface,
 }
 
+#[derive(Debug, Clone)]
 struct Vertex {
     pub kind: VertexKind,
     pub normal: Unit<Vector>,
@@ -210,6 +299,8 @@ struct Vertex {
     pub beta: Color,
     pub pdf_fwd: f64,
     pub pdf_rev: f64,
+    pub vcm: f64,
+    pub vc: f64,
 }
 
 impl Vertex {
@@ -219,6 +310,8 @@ impl Vertex {
         point: Point,
         beta: Color,
         pdf_fwd: f64,
+        vcm: f64,
+        vc: f64,
     ) -> Vertex {
         Vertex {
             kind,
@@ -227,6 +320,8 @@ impl Vertex {
             beta,
             pdf_fwd,
             pdf_rev: 0.0,
+            vcm,
+            vc,
         }
     }
 }

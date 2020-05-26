@@ -46,7 +46,7 @@ texture = "gray"
 
 [textures.light]
 kind = "Solid"
-color = [15, 15, 15]
+color = [5, 5, 5]
 [materials.light]
 kind = "Emission"
 texture = "light"
