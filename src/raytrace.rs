@@ -2,8 +2,8 @@ use crate::camera::Camera;
 use crate::color::Color;
 use crate::config::Config;
 use crate::geometry::*;
-use crate::pdf::PDF;
 use crate::renderer::Buffer;
+use crate::udpt::UDPT;
 use crate::util::*;
 use crossbeam::thread;
 use image::{ImageBuffer, ImageFormat, Rgb};
@@ -12,7 +12,9 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Instant;
 
-const MAX_DEPTH: u32 = 25;
+pub trait Tracer {
+    fn sample(&mut self, ray: Ray) -> Color;
+}
 
 fn raytrace_rows(
     config: &Config,
@@ -23,6 +25,7 @@ fn raytrace_rows(
 ) {
     // Buffer the rows before writing them to `buf` to avoid too much contention
     // on the lock.
+    let mut tracer = UDPT::new(scene);
     let mut row_backlog: Vec<(usize, Vec<u32>)> = vec![];
     for r in rows {
         let mut row: Vec<u32> = vec![0; config.width];
@@ -34,7 +37,7 @@ fn raytrace_rows(
                 let v = ((config.height - r) as f64 + random_f64(0.0..1.0))
                     / (config.height as f64 - 1.0);
                 let ray = camera.get_ray(u, v);
-                color_sum += ray_color(scene, ray, 0);
+                color_sum += tracer.sample(ray);
             }
             *result = write_color(config, color_sum);
         }
@@ -93,61 +96,6 @@ pub fn raytrace<'scene>(
         );
         img.save_with_format(&output, ImageFormat::Png).unwrap();
         println!("Output saved as: {}", output.display());
-    }
-}
-
-fn ray_color(scene: &Scene, ray: Ray, depth: u32) -> Color {
-    if depth > MAX_DEPTH {
-        return Color::zeros();
-    }
-    match scene.hit(ray, 0.0001..f64::INFINITY) {
-        Some(hit) => {
-            let emit = hit.material.emitted(&hit);
-            match hit.material.scatter(&ray, &hit) {
-                None => emit,
-                Some(scatter) => {
-                    if let Some(specular) = scatter.specular {
-                        return scatter.attenuation.component_mul(&ray_color(
-                            scene,
-                            specular,
-                            depth + 1,
-                        ));
-                    }
-                    if let Some(scatter_pdf) = scatter.pdf {
-                        let cos_pdf = PDF::cosine(hit.normal);
-                        let light_pdf = PDF::hittable(hit.point, &scene.lights);
-                        let final_pdf = if scene.lights.is_empty() {
-                            cos_pdf
-                        } else {
-                            PDF::mix(0.75, &cos_pdf, &light_pdf)
-                        };
-                        let scatter_ray = Ray {
-                            origin: hit.point,
-                            dir: final_pdf.gen(),
-                        };
-                        let color = ray_color(scene, scatter_ray, depth + 1);
-                        // The final value is the emission plus the MC estimate:
-                        // attenuation * color(dir) * (s(dir) / p(dir))
-                        // where `s` is the scattering PDF and `p` is the
-                        // PDF we used to generate the direction.
-                        // In Lambertian surfaces without MIS, for example,
-                        // s(dir) and p(dir) are both cos(theta) where theta
-                        // is the angle between the normal and dir, so those
-                        // ordinarily cancel.
-                        // Adding MIS mixes the final_pdf which we used to
-                        // generate the scatter_ray, which throws off the
-                        // calculation so we actually do need to do the division
-                        // now.
-                        return emit
-                            + scatter.attenuation.component_mul(&color)
-                                * scatter_pdf.value(scatter_ray.dir)
-                                * final_pdf.value(scatter_ray.dir).recip();
-                    }
-                    Color::zeros()
-                }
-            }
-        }
-        None => scene.background,
     }
 }
 
