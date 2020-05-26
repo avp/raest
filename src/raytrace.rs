@@ -40,7 +40,7 @@ fn raytrace_rows(
                 let v = ((config.height - r) as f64 + random())
                     / (config.height as f64 - 1.0);
                 let ray = camera.get_ray(u, v);
-                let color = tracer.sample(ray, false);
+                let color = tracer.sample(ray, (r, c) == (142, 138));
                 color_sum += color;
             }
             *result = write_color(config, color_sum);

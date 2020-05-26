@@ -106,38 +106,35 @@ impl<'s> BDPT<'s> {
                 return (Color::zeros(), 0.0);
             }
         }
-        let (w_camera, w_light) = if t > 1 && s > 1 {
-            (
-                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
-                    * (camera_path[t - 1].vcm
-                        * camera_path[t - 2].pdf_rev
-                        * camera_path[t - 1].vc),
-                (light_path[s - 1].pdf_rev * light_path[s - 1].g_rev)
-                    * (light_path[s - 1].vcm
-                        * light_path[s - 2].pdf_rev
-                        * light_path[s - 1].vc),
-            )
+        let w_camera = (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
+            * (camera_path[t - 1].vcm
+                * camera_path[t - 2].pdf_rev
+                * camera_path[t - 1].vc);
+        let w_light = if s > 1 {
+            (light_path[s - 1].pdf_rev * light_path[s - 1].g_rev)
+                * (light_path[s - 1].vcm
+                    * light_path[s - 2].pdf_rev
+                    * light_path[s - 1].vc)
         } else if s == 1 {
-            (
-                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
-                    * (camera_path[t - 1].vcm
-                        * camera_path[t - 2].pdf_rev
-                        * camera_path[t - 1].vc),
-                (light_path[0].pdf_rev * light_path[0].g_rev)
-                    / (light_path[0].pdf_fwd * light_path[0].g_fwd),
-            )
+            (light_path[0].pdf_rev * light_path[0].g_rev)
+                / (light_path[0].pdf_fwd * light_path[0].g_fwd)
         } else if s == 0 {
-            assert!(t > 1);
-            (
-                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
-                    * (camera_path[t - 1].vcm
-                        * camera_path[t - 2].pdf_rev
-                        * camera_path[t - 1].vc),
-                0.0,
-            )
+            0.0
         } else {
             unreachable!();
         };
+        if _debug {
+            dbg!(
+                camera_path[t - 1].pdf_rev,
+                camera_path[t - 1].g_rev,
+                camera_path[t - 1].vcm,
+                camera_path[t - 2].pdf_rev,
+                camera_path[t - 1].vc,
+                w_camera,
+                w_light,
+            );
+        }
+        // let w_st = (camera_path.len() as f64 + 1.0 + 1.0 as f64).recip();
         let w_st = (w_camera + 1.0 + w_light).recip();
         if s == 0 {
             return (camera_path[t - 1].throughput, w_st);
@@ -147,7 +144,6 @@ impl<'s> BDPT<'s> {
         let d_norm = d.normalize();
         let vt_cos = v_cam.normal.dot(&d_norm).abs();
         let vs_cos = v_light.normal.dot(&d_norm).abs();
-        let g = v_cam.throughput.component_mul(&v_light.throughput);
         let ft = v_cam.f(Ray {
             origin: camera_path[t - 2].point,
             dir: camera_path[t - 1].point - camera_path[t - 2].point,
@@ -156,6 +152,7 @@ impl<'s> BDPT<'s> {
             origin: camera_path[t - 1].point,
             dir: light_path[s - 1].point - camera_path[t - 1].point,
         });
+        let g = v_cam.throughput.component_mul(&v_light.throughput);
         (g, w_st)
     }
 
@@ -203,6 +200,12 @@ impl<'s> BDPT<'s> {
         };
         let mut result: Vec<Vertex> = vec![];
 
+        // if let Some(hit) = self.scene.hit(ray, 0.0001..f64::INFINITY) {
+        //     if hit.normal.x < -0.2 && hit.normal.y < -0.2 {
+        //         dbg!(hit.normal);
+        //     }
+        // }
+
         while result.len() < depth as usize {
             if result.len() > MIN_DEPTH as usize {
                 let q = f64::min(1.0, throughput.norm() / prev.pdf_fwd);
@@ -238,25 +241,61 @@ impl<'s> BDPT<'s> {
                     }
                     if let Some(scatter) = hit.material.scatter(&ray, &hit) {
                         if let Some(specular) = scatter.specular {
-                            ray = specular;
-                            prev.pdf_rev = 0.0;
-                            result.push(prev);
-                            // TODO: Fix this.
-                            let point = hit.point;
-                            let normal = hit.normal;
-                            prev = Vertex::new(
-                                VertexKind::Surface(hit),
-                                point,
-                                normal,
-                                throughput,
-                                EPS,
-                                EPS,
-                                1.0,
-                                1.0,
-                            );
-                            continue;
-                        }
-                        if let Some(scatter_pdf) = scatter.pdf {
+                            if let Some(scatter_pdf) = scatter.pdf {
+                                let scatter_ray = specular;
+                                let pdf_fwd = 1.0;
+                                prev.pdf_rev = 1.0;
+                                let g_fwd =
+                                    self.g(hit.point, hit.normal, prev.point);
+                                let p_i = pdf_fwd * g_fwd;
+                                if result.is_empty() {
+                                    match kind {
+                                        WalkKind::Camera => {
+                                            prev.vcm = p_i.recip();
+                                            prev.vc = 0.0;
+                                        }
+                                        WalkKind::Light => {
+                                            prev.vcm = p_i.recip();
+                                            prev.vc = prev.g_rev
+                                                / ((prev.pdf_fwd * prev.g_fwd)
+                                                    * p_i);
+                                        }
+                                    }
+                                }
+                                let vcm = pdf_fwd.recip();
+                                let g_prev =
+                                    self.g(prev.point, prev.normal, hit.point);
+                                prev.g_rev = g_prev;
+                                let vc = match result.last() {
+                                    Some(v) => {
+                                        g_prev / p_i
+                                            * (prev.vcm + v.pdf_rev * prev.vc)
+                                    }
+                                    None => g_prev / p_i * prev.vcm,
+                                };
+                                throughput = throughput
+                                    .component_mul(&scatter.attenuation);
+                                result.push(prev);
+                                let point = hit.point;
+                                let normal = hit.normal;
+                                prev = Vertex::new(
+                                    VertexKind::Surface {
+                                        hit,
+                                        specular: true,
+                                    },
+                                    point,
+                                    normal,
+                                    throughput,
+                                    pdf_fwd,
+                                    g_fwd,
+                                    vcm,
+                                    vc,
+                                );
+                                ray = scatter_ray;
+                                continue;
+                            }
+                            unimplemented!("Specular unimplemented");
+                        } else if let Some(scatter_pdf) = scatter.pdf {
                             let scatter_ray = Ray {
                                 origin: hit.point,
                                 dir: scatter_pdf.gen(),
@@ -275,8 +314,9 @@ impl<'s> BDPT<'s> {
                                     }
                                     WalkKind::Light => {
                                         prev.vcm = p_i.recip();
-                                        prev.vc =
-                                            prev.g_rev / prev.pdf_fwd / p_i;
+                                        prev.vc = prev.g_rev
+                                            / ((prev.pdf_fwd * prev.g_fwd)
+                                                * p_i);
                                     }
                                 }
                             }
@@ -307,7 +347,10 @@ impl<'s> BDPT<'s> {
                             let point = hit.point;
                             let normal = hit.normal;
                             prev = Vertex::new(
-                                VertexKind::Surface(hit),
+                                VertexKind::Surface {
+                                    hit,
+                                    specular: false,
+                                },
                                 point,
                                 normal,
                                 throughput,
@@ -329,7 +372,7 @@ impl<'s> BDPT<'s> {
     }
 
     fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> Option<Hit> {
-        let eps = 0.1;
+        let eps = 0.001;
         let (p1, p2) =
             (v1.point + eps * *v1.normal, v2.point + eps * *v2.normal);
         let ray = Ray {
@@ -370,7 +413,7 @@ enum WalkKind {
 enum VertexKind<'s> {
     Camera,
     Light,
-    Surface(Hit<'s>),
+    Surface { hit: Hit<'s>, specular: bool },
 }
 
 impl<'s> VertexKind<'s> {
@@ -424,12 +467,20 @@ impl<'s> Vertex<'s> {
     pub fn f(&self, inbound: Ray) -> Color {
         match &self.kind {
             VertexKind::Light => self.throughput,
-            VertexKind::Surface(hit) => {
+            VertexKind::Surface { hit, .. } => {
                 let mat = hit.material;
                 let color = mat.scatter(&inbound, &hit).unwrap().attenuation;
                 color
             }
             VertexKind::Camera => Color::zeros(),
+        }
+    }
+
+    pub fn is_specular(&self) -> bool {
+        match &self.kind {
+            VertexKind::Light => false,
+            VertexKind::Surface { specular, .. } => *specular,
+            VertexKind::Camera => false,
         }
     }
 }

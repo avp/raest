@@ -51,7 +51,10 @@ impl Material {
                     Some(Scatter {
                         attenuation: specular.value(hit.uv, hit.point),
                         pdf: Some(pdf),
-                        specular: None,
+                        specular: Some(Ray {
+                            origin: hit.point,
+                            dir: pdf.gen(),
+                        }),
                     })
                 }
             }
