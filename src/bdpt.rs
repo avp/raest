@@ -11,6 +11,7 @@ pub struct BDPT<'s> {
 
 const MAX_CAMERA_DEPTH: u32 = 10;
 const MAX_LIGHT_DEPTH: u32 = 5;
+const EPS: f64 = 0.001;
 
 impl<'s> BDPT<'s> {
     #[allow(dead_code)]
@@ -30,7 +31,10 @@ impl<'s> BDPT<'s> {
         if camera_path.len() == 1 {
             return self.scene.background;
         }
-        for t in 1..=camera_path.len() - 1 {
+        if camera_path.len() == 2 {
+            return camera_path[1].beta;
+        }
+        for t in 2..=camera_path.len() - 1 {
             for s in 0..=light_path.len() - 1 {
                 result += self.join_path(&camera_path, &light_path, t, s);
             }
@@ -38,8 +42,7 @@ impl<'s> BDPT<'s> {
         result
     }
 
-    /// Use vertices 0..=t of the camera path and 0..=s vertices of the light
-    /// path.
+    /// Use t vertices of the camera path and s vertices of the light path.
     fn join_path(
         &self,
         camera_path: &[Vertex],
@@ -47,9 +50,8 @@ impl<'s> BDPT<'s> {
         t: usize,
         s: usize,
     ) -> Color {
-        let (vt, vs) = (&camera_path[t], &light_path[s]);
-        if t > 0 {
-            if !self.test_visibility(vs, vt) {
+        if s > 0 {
+            if !self.test_visibility(&camera_path[t - 1], &light_path[s - 1]) {
                 return Color::zeros();
             }
         }
@@ -64,13 +66,14 @@ impl<'s> BDPT<'s> {
                         * light_path[s - 2].pdf_rev
                         * light_path[s - 1].vc),
             )
-        } else if t == 1 && s == 1 {
+        } else if s == 1 {
             (
-                camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm,
+                camera_path[t - 1].pdf_rev
+                    * (camera_path[t - 1].vcm
+                        * camera_path[t - 2].pdf_rev
+                        * camera_path[t - 1].vc),
                 light_path[0].pdf_rev / light_path[0].pdf_fwd,
             )
-        } else if t == 1 && s == 0 {
-            (camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm, 0.0)
         } else if s == 0 {
             assert!(t > 1);
             (
@@ -80,25 +83,18 @@ impl<'s> BDPT<'s> {
                         * camera_path[t - 1].vc),
                 0.0,
             )
-        } else if s == 1 {
-            assert!(t > 1);
-            (
-                camera_path[t - 1].pdf_rev
-                    * (camera_path[t - 1].vcm
-                        * camera_path[t - 2].pdf_rev
-                        * camera_path[t - 1].vc),
-                light_path[0].pdf_rev / light_path[0].pdf_fwd,
-            )
         } else {
-            assert!(t == 1);
-            (
-                camera_path[t - 1].pdf_rev * camera_path[t - 1].vcm,
-                light_path[s - 1].pdf_rev / (100.0)
-                    * (light_path[s - 1].pdf_rev
-                        + light_path[s - 2].pdf_rev * light_path[s - 1].vc),
-            )
+            unreachable!();
         };
-        let (w_camera, w_light): (f64, f64) = (t as f64, s as f64);
+        let (vt, vs) = (
+            camera_path[t - 1].beta,
+            if s > 0 {
+                light_path[s - 1].beta
+            } else {
+                Color::new(1.0, 1.0, 1.0)
+            },
+        );
+        // let (w_camera, w_light): (f64, f64) = (t as f64, s as f64);
         let w_st = (w_camera + 1.0 + w_light).recip();
         // if w_camera > 10000.0 {
         //     dbg!(
@@ -115,7 +111,7 @@ impl<'s> BDPT<'s> {
 
         //     unreachable!();
         // }
-        (w_camera * vt.beta).component_mul(&(w_light * vs.beta)) * w_st
+        (w_camera * vt).component_mul(&(w_light * vs)) * w_st
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
@@ -141,7 +137,7 @@ impl<'s> BDPT<'s> {
                 Unit::new_normalize(ray.dir),
                 ray.origin,
                 beta,
-                0.00001,
+                EPS,
                 1.0,
                 0.0,
             ),
@@ -150,7 +146,7 @@ impl<'s> BDPT<'s> {
                 Unit::new_normalize(ray.dir),
                 ray.origin,
                 beta,
-                0.00001,
+                EPS,
                 1.0,
                 1.0,
             ),
@@ -178,7 +174,7 @@ impl<'s> BDPT<'s> {
                             hit.normal,
                             hit.point,
                             beta,
-                            0.000001,
+                            EPS,
                             1.0,
                             1.0,
                         );
@@ -195,7 +191,7 @@ impl<'s> BDPT<'s> {
                                 hit.normal,
                                 hit.point,
                                 beta,
-                                0.000001,
+                                EPS,
                                 1.0,
                                 1.0,
                             );
@@ -246,7 +242,6 @@ impl<'s> BDPT<'s> {
     }
 
     fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> bool {
-        const EPS: f64 = 0.001;
         let (p1, p2) =
             (v1.point + EPS * *v1.normal, v2.point + EPS * *v2.normal);
         let ray = Ray {
