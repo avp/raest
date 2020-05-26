@@ -3,6 +3,7 @@ use crate::geometry::*;
 use crate::material::Scatter;
 use crate::pdf::PDF;
 use crate::raytrace::Tracer;
+use nalgebra::Unit;
 
 /// Bidirectional Path Tracer.
 pub struct BDPT<'s> {
@@ -170,8 +171,8 @@ impl<'s> BDPT<'s> {
     fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> bool {
         const EPS: f64 = 0.001;
         let (p1, p2) = (
-            v1.point() + EPS * v1.normal(),
-            v2.point() + EPS * v2.normal(),
+            v1.point() + EPS * *v1.normal(),
+            v2.point() + EPS * *v2.normal(),
         );
         let ray = Ray {
             origin: p1,
@@ -180,6 +181,19 @@ impl<'s> BDPT<'s> {
         let tmin = EPS;
         let tmax = ray.dir.norm() - EPS;
         self.scene.hit(ray, tmin..tmax).is_none()
+    }
+
+    /// g_i(y) term in the light transport equation.
+    /// g_i(y) = cos(theta_i) * cos(theta_{i+1}) / || y_i - y_{i-1} ||^2
+    /// where thetas are the angle between surface normals and the segment
+    /// connecting the vertices.
+    fn g(v1: &Vertex, v2: &Vertex) -> f64 {
+        let (p1, p2) = (v1.point(), v2.point());
+        let d = p2 - p1;
+        let d_normalized = d.normalize();
+        let cos_theta1 = v1.normal().dot(&d_normalized);
+        let cos_theta2 = v1.normal().dot(&-d_normalized);
+        cos_theta1 * cos_theta2 / d.norm_squared()
     }
 }
 
@@ -241,12 +255,12 @@ impl<'s> Vertex<'s> {
             Vertex::Scatter { hit, .. } => hit.point,
         }
     }
-    pub fn normal(&self) -> Vector {
+    pub fn normal(&self) -> Unit<Vector> {
         match self {
-            Vertex::Camera(ray) => ray.dir,
-            Vertex::Light(ray) => ray.dir,
-            Vertex::Specular { hit, .. } => *hit.normal,
-            Vertex::Scatter { hit, .. } => *hit.normal,
+            Vertex::Camera(ray) => Unit::new_normalize(ray.dir),
+            Vertex::Light(ray) => Unit::new_normalize(ray.dir),
+            Vertex::Specular { hit, .. } => hit.normal,
+            Vertex::Scatter { hit, .. } => hit.normal,
         }
     }
 }
