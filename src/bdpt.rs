@@ -10,8 +10,8 @@ pub struct BDPT<'s> {
 }
 
 const MAX_CAMERA_DEPTH: u32 = 10;
-const MAX_LIGHT_DEPTH: u32 = 5;
-const EPS: f64 = 0.001;
+const MAX_LIGHT_DEPTH: u32 = 10;
+const EPS: f64 = 0.00001;
 
 impl<'s> BDPT<'s> {
     #[allow(dead_code)]
@@ -26,14 +26,14 @@ impl<'s> BDPT<'s> {
             Color::new(1.0, 1.0, 1.0),
             MAX_CAMERA_DEPTH,
         );
-        let light_path = self.gen_light_path();
         let mut result = Color::zeros();
         if camera_path.len() == 1 {
             return self.scene.background;
         }
-        if camera_path.len() == 2 {
+        if camera_path.len() == 2 && camera_path[1].kind == VertexKind::Light {
             return camera_path[1].beta;
         }
+        let light_path = self.gen_light_path();
         for t in 2..=camera_path.len() - 1 {
             for s in 0..=light_path.len() - 1 {
                 result += self.join_path(&camera_path, &light_path, t, s);
@@ -57,27 +57,28 @@ impl<'s> BDPT<'s> {
         }
         let (w_camera, w_light) = if t > 1 && s > 1 {
             (
-                camera_path[t - 1].pdf_rev
+                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
                     * (camera_path[t - 1].vcm
                         * camera_path[t - 2].pdf_rev
                         * camera_path[t - 1].vc),
-                light_path[s - 1].pdf_rev
+                (light_path[s - 1].pdf_rev * light_path[s - 1].g_rev)
                     * (light_path[s - 1].vcm
                         * light_path[s - 2].pdf_rev
                         * light_path[s - 1].vc),
             )
         } else if s == 1 {
             (
-                camera_path[t - 1].pdf_rev
+                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
                     * (camera_path[t - 1].vcm
                         * camera_path[t - 2].pdf_rev
                         * camera_path[t - 1].vc),
-                light_path[0].pdf_rev / light_path[0].pdf_fwd,
+                (light_path[0].pdf_rev * light_path[0].g_rev)
+                    / (light_path[0].pdf_fwd * light_path[0].g_fwd),
             )
         } else if s == 0 {
             assert!(t > 1);
             (
-                camera_path[t - 1].pdf_rev
+                (camera_path[t - 1].pdf_rev * camera_path[t - 1].g_rev)
                     * (camera_path[t - 1].vcm
                         * camera_path[t - 2].pdf_rev
                         * camera_path[t - 1].vc),
@@ -94,24 +95,8 @@ impl<'s> BDPT<'s> {
                 Color::new(1.0, 1.0, 1.0)
             },
         );
-        // let (w_camera, w_light): (f64, f64) = (t as f64, s as f64);
         let w_st = (w_camera + 1.0 + w_light).recip();
-        // if w_camera > 10000.0 {
-        //     dbg!(
-        //         t,
-        //         s,
-        //         &camera_path[t],
-        //         &light_path[s],
-        //         vt.beta,
-        //         vs.beta,
-        //         w_camera,
-        //         w_light,
-        //         w_st
-        //     );
-
-        //     unreachable!();
-        // }
-        (w_camera * vt).component_mul(&(w_light * vs)) * w_st
+        (vt).component_mul(&(vs)) * w_st
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
@@ -138,6 +123,7 @@ impl<'s> BDPT<'s> {
                 ray.origin,
                 beta,
                 EPS,
+                EPS,
                 1.0,
                 0.0,
             ),
@@ -146,6 +132,7 @@ impl<'s> BDPT<'s> {
                 Unit::new_normalize(ray.dir),
                 ray.origin,
                 beta,
+                EPS,
                 EPS,
                 1.0,
                 1.0,
@@ -175,6 +162,7 @@ impl<'s> BDPT<'s> {
                             hit.point,
                             beta,
                             EPS,
+                            EPS,
                             1.0,
                             1.0,
                         );
@@ -191,6 +179,7 @@ impl<'s> BDPT<'s> {
                                 hit.normal,
                                 hit.point,
                                 beta,
+                                EPS,
                                 EPS,
                                 1.0,
                                 1.0,
@@ -211,6 +200,8 @@ impl<'s> BDPT<'s> {
                             let vcm = pdf_fwd.recip();
                             let g_prev =
                                 self.g(prev.point, prev.normal, hit.point);
+                            prev.g_rev =
+                                scatter_pdf.value(prev.point - hit.point);
                             let vc = match result.last() {
                                 Some(v) => {
                                     g_prev / p_i
@@ -226,6 +217,7 @@ impl<'s> BDPT<'s> {
                                 hit.point,
                                 beta,
                                 pdf_fwd,
+                                g_fwd,
                                 vcm,
                                 vc,
                             );
@@ -293,7 +285,9 @@ struct Vertex {
     pub point: Point,
     pub beta: Color,
     pub pdf_fwd: f64,
+    pub g_fwd: f64,
     pub pdf_rev: f64,
+    pub g_rev: f64,
     pub vcm: f64,
     pub vc: f64,
 }
@@ -305,6 +299,7 @@ impl Vertex {
         point: Point,
         beta: Color,
         pdf_fwd: f64,
+        g_fwd: f64,
         vcm: f64,
         vc: f64,
     ) -> Vertex {
@@ -314,7 +309,9 @@ impl Vertex {
             point,
             beta,
             pdf_fwd,
+            g_fwd,
             pdf_rev: 0.0,
+            g_rev: 0.0,
             vcm,
             vc,
         }
