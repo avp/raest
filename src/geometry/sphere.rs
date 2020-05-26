@@ -101,17 +101,19 @@ impl Hittable for Sphere {
         uvw.localize(self.random_to_sphere(dir))
     }
 
-    fn emit(&self) -> (Ray, Color) {
+    fn emit(&self) -> (Ray, Unit<Vector>, Color) {
         let dir = random_unit_vector();
         let ray = Ray {
             origin: self.center + (self.radius * dir),
             dir,
         };
+        let normal = Unit::new_unchecked(dir);
         (
             ray,
+            normal,
             self.material.emitted(&Hit::new(
                 ray,
-                Unit::new_unchecked(dir),
+                normal,
                 0.0,
                 &self.material,
                 (0.0, 0.0),

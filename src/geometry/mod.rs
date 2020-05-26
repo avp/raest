@@ -44,7 +44,7 @@ pub trait Hittable: Send + Sync {
         eprintln!("Warning: Attempting to sample PDF for unimplemented object");
         Vector::x()
     }
-    fn emit(&self) -> (Ray, Color) {
+    fn emit(&self) -> (Ray, Unit<Vector>, Color) {
         unimplemented!("Not all objects implement emit() yet");
     }
 }
@@ -273,7 +273,7 @@ impl Hittable for HittableList {
         h.random(origin)
     }
 
-    fn emit(&self) -> (Ray, Color) {
+    fn emit(&self) -> (Ray, Unit<Vector>, Color) {
         let h = &self
             .hittables
             .as_slice()

@@ -3,12 +3,14 @@ use crate::geometry::*;
 use crate::raytrace::Tracer;
 use crate::util::*;
 use nalgebra::Unit;
+use std::f64::consts::PI;
 
 /// Bidirectional Path Tracer.
 pub struct BDPT<'s> {
     scene: &'s Scene,
 }
 
+const MIN_DEPTH: u32 = 3;
 const MAX_CAMERA_DEPTH: u32 = 10;
 const MAX_LIGHT_DEPTH: u32 = 10;
 const EPS: f64 = 0.00001;
@@ -23,6 +25,7 @@ impl<'s> BDPT<'s> {
         let camera_path = self.random_walk(
             WalkKind::Camera,
             ray,
+            Unit::new_normalize(ray.dir),
             Color::new(1.0, 1.0, 1.0),
             MAX_CAMERA_DEPTH,
         );
@@ -100,14 +103,15 @@ impl<'s> BDPT<'s> {
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
-        let (ray, color) = self.scene.lights.emit();
-        self.random_walk(WalkKind::Light, ray, color, MAX_LIGHT_DEPTH)
+        let (ray, normal, color) = self.scene.lights.emit();
+        self.random_walk(WalkKind::Light, ray, normal, color, MAX_LIGHT_DEPTH)
     }
 
     fn random_walk(
         &self,
         kind: WalkKind,
         ray: Ray,
+        normal: Unit<Vector>,
         mut beta: Color,
         mut depth: u32,
     ) -> Vec<Vertex> {
@@ -119,8 +123,8 @@ impl<'s> BDPT<'s> {
         let mut prev: Vertex = match kind {
             WalkKind::Camera => Vertex::new(
                 VertexKind::Camera,
-                Unit::new_normalize(ray.dir),
                 ray.origin,
+                normal,
                 beta,
                 EPS,
                 EPS,
@@ -129,27 +133,42 @@ impl<'s> BDPT<'s> {
             ),
             WalkKind::Light => Vertex::new(
                 VertexKind::Light,
-                Unit::new_normalize(ray.dir),
                 ray.origin,
+                normal,
                 beta,
                 EPS,
                 EPS,
-                1.0,
+                PI,
                 1.0,
             ),
         };
         let mut result: Vec<Vertex> = vec![];
-        depth -= 1;
 
         while result.len() < depth as usize {
-            if result.len() > 3 {
+            if result.len() > MIN_DEPTH as usize {
                 let q = f64::min(1.0, beta.norm() / prev.pdf_fwd);
                 if random() > q {
                     break;
                 }
             }
             match self.scene.hit(ray, 0.0001..f64::INFINITY) {
-                None => break,
+                None => {
+                    beta = beta.component_mul(&self.scene.background);
+                    prev.beta = beta;
+                    prev.pdf_rev = 0.0;
+                    result.push(prev);
+                    prev = Vertex::new(
+                        VertexKind::Surface,
+                        Point::origin(),
+                        Vector::x_axis(),
+                        beta,
+                        EPS,
+                        EPS,
+                        1.0,
+                        1.0,
+                    );
+                    break;
+                }
                 Some(hit) => {
                     let emit = hit.material.emitted(&hit);
                     if emit.norm_squared() > 0.0 {
@@ -158,8 +177,8 @@ impl<'s> BDPT<'s> {
                         result.push(prev);
                         prev = Vertex::new(
                             VertexKind::Light,
-                            hit.normal,
                             hit.point,
+                            hit.normal,
                             beta,
                             EPS,
                             EPS,
@@ -176,8 +195,8 @@ impl<'s> BDPT<'s> {
                             // TODO: Fix this.
                             prev = Vertex::new(
                                 VertexKind::Surface,
-                                hit.normal,
                                 hit.point,
+                                hit.normal,
                                 beta,
                                 EPS,
                                 EPS,
@@ -210,11 +229,24 @@ impl<'s> BDPT<'s> {
                                 None => g_prev / p_i * prev.vcm,
                             };
                             beta = beta.component_mul(&scatter.attenuation);
+                            if result.is_empty() {
+                                match kind {
+                                    WalkKind::Camera => {
+                                        prev.vcm = 250.0 / p_i.recip();
+                                        prev.vc = 0.0;
+                                    }
+                                    WalkKind::Light => {
+                                        prev.vcm = p_i.recip();
+                                        prev.vc =
+                                            prev.g_rev / prev.pdf_fwd / p_i;
+                                    }
+                                }
+                            }
                             result.push(prev);
                             prev = Vertex::new(
                                 VertexKind::Surface,
-                                hit.normal,
                                 hit.point,
+                                hit.normal,
                                 beta,
                                 pdf_fwd,
                                 g_fwd,
@@ -295,8 +327,8 @@ struct Vertex {
 impl Vertex {
     pub fn new(
         kind: VertexKind,
-        normal: Unit<Vector>,
         point: Point,
+        normal: Unit<Vector>,
         beta: Color,
         pdf_fwd: f64,
         g_fwd: f64,
