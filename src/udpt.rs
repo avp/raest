@@ -31,13 +31,12 @@ impl<'scene> UDPT<'scene> {
                             );
                         }
                         if let Some(scatter_pdf) = scatter.pdf {
-                            let cos_pdf = PDF::cosine(hit.normal);
                             let light_pdf =
                                 PDF::hittable(hit.point, &self.scene.lights);
                             let final_pdf = if self.scene.lights.is_empty() {
-                                cos_pdf
+                                scatter_pdf
                             } else {
-                                PDF::mix(0.75, &cos_pdf, &light_pdf)
+                                PDF::mix(0.75, &scatter_pdf, &light_pdf)
                             };
                             let scatter_ray = Ray {
                                 origin: hit.point,
