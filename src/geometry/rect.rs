@@ -142,4 +142,18 @@ impl Hittable for Rect {
         );
         rand_point - origin
     }
+
+    fn emit(&self) -> Ray {
+        const EPS: f64 = 0.0001;
+        let dir = *self.axis.unit();
+        let rand_point = Point::new(
+            random_range(self.p1.x - EPS..self.p2.x + EPS),
+            random_range(self.p1.y - EPS..self.p2.y + EPS),
+            random_range(self.p1.z - EPS..self.p2.z + EPS),
+        );
+        Ray {
+            origin: rand_point,
+            dir: if random() < 0.5 { -1.0 * dir } else { dir },
+        }
+    }
 }

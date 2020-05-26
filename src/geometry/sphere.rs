@@ -31,7 +31,6 @@ impl Hittable for Sphere {
     fn is_light(&self) -> bool {
         match self.material.as_ref() {
             Material::Emission(..) => true,
-            Material::Dielectric(..) => true,
             _ => false,
         }
     }
@@ -99,6 +98,14 @@ impl Hittable for Sphere {
         let dir = self.center - origin;
         let uvw = ONB::from_w(Unit::new_normalize(dir));
         uvw.localize(self.random_to_sphere(dir))
+    }
+
+    fn emit(&self) -> Ray {
+        let dir = random_unit_vector();
+        Ray {
+            origin: self.center + (self.radius * dir),
+            dir,
+        }
     }
 }
 

@@ -44,6 +44,9 @@ pub trait Hittable: Send + Sync {
         eprintln!("Warning: Attempting to sample PDF for unimplemented object");
         Vector::x()
     }
+    fn emit(&self) -> Ray {
+        unimplemented!("Not all objects implement emit() yet");
+    }
 }
 
 pub struct Scene {
@@ -268,5 +271,14 @@ impl Hittable for HittableList {
             .choose(&mut rand::thread_rng())
             .unwrap();
         h.random(origin)
+    }
+
+    fn emit(&self) -> Ray {
+        let h = &self
+            .hittables
+            .as_slice()
+            .choose(&mut rand::thread_rng())
+            .unwrap();
+        h.emit()
     }
 }

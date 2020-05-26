@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use structopt::StructOpt;
 
+mod bdpt;
 mod camera;
 mod config;
 mod geometry;

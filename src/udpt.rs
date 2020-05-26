@@ -11,6 +11,7 @@ pub struct UDPT<'scene> {
 }
 
 impl<'scene> UDPT<'scene> {
+    #[allow(dead_code)]
     pub fn new(scene: &'scene Scene) -> UDPT {
         UDPT { scene }
     }
