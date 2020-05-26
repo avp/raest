@@ -23,17 +23,17 @@ impl<'s> BDPT<'s> {
             self.random_walk(WalkKind::Camera, ray, MAX_CAMERA_DEPTH);
         let light_path = self.gen_light_path();
         let mut result = Color::zeros();
-        let mut paths = 0;
         if camera_path.len() == 1 {
             return self.scene.background;
         }
         for s in 1..=camera_path.len() - 1 {
             for t in 0..=light_path.len() - 1 {
-                result += self.join_path(&camera_path, &light_path, s, t);
-                paths += 1;
+                let w = (s + t + 1) as f64;
+                result +=
+                    self.join_path(&camera_path, &light_path, s, t) * w.recip();
             }
         }
-        result * (paths as f64).recip()
+        result
     }
 
     /// Use vertices 0..=s of the camera path and 0..=t vertices
@@ -53,7 +53,8 @@ impl<'s> BDPT<'s> {
         for i in 1..=s {
             match &camera_path[i] {
                 Vertex::Light(..) => {
-                    return result * 15.0;
+                    result *= 15.0;
+                    break;
                 }
                 Vertex::Specular { scatter, .. } => {
                     result = result.component_mul(&scatter.attenuation);

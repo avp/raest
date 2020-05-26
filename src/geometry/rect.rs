@@ -145,7 +145,7 @@ impl Hittable for Rect {
 
     fn emit(&self) -> Ray {
         const EPS: f64 = 0.0001;
-        let dir = *self.axis.unit();
+        let dir = *self.axis.unit() + random_unit_vector();
         let rand_point = Point::new(
             random_range(self.p1.x - EPS..self.p2.x + EPS),
             random_range(self.p1.y - EPS..self.p2.y + EPS),
