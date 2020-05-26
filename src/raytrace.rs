@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crate::bdpt::BDPT;
 use crate::camera::Camera;
 use crate::color::Color;
@@ -27,7 +28,7 @@ fn raytrace_rows(
     // Buffer the rows before writing them to `buf` to avoid too much contention
     // on the lock.
     let mut row_backlog: Vec<(usize, Vec<u32>)> = vec![];
-    let mut tracer = BDPT::new(scene);
+    let mut tracer = UDPT::new(scene);
     for r in rows {
         let mut row: Vec<u32> = vec![0; config.width];
         for (c, result) in row.iter_mut().enumerate() {
