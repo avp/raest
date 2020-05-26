@@ -1,7 +1,5 @@
 use crate::color::Color;
 use crate::geometry::*;
-use crate::material::Scatter;
-use crate::pdf::PDF;
 use crate::raytrace::Tracer;
 use nalgebra::Unit;
 
@@ -10,8 +8,8 @@ pub struct BDPT<'s> {
     scene: &'s Scene,
 }
 
-const MAX_CAMERA_DEPTH: u32 = 10;
-const MAX_LIGHT_DEPTH: u32 = 10;
+const MAX_CAMERA_DEPTH: u32 = 5;
+const MAX_LIGHT_DEPTH: u32 = 5;
 
 impl<'s> BDPT<'s> {
     #[allow(dead_code)]
@@ -50,63 +48,13 @@ impl<'s> BDPT<'s> {
         t: usize,
         s: usize,
     ) -> Color {
+        let (vt, vs) = (&camera_path[t], &light_path[s]);
         if t > 0 {
-            if !self.test_visibility(&camera_path[t], &light_path[s]) {
+            if !self.test_visibility(vs, vt) {
                 return Color::zeros();
             }
         }
-        // let mut result = Color::new(1.0, 1.0, 1.0);
-        // for i in 1..=s {
-        //     match &camera_path[i] {
-        //         Vertex::Light(..) => {
-        //             result *= 15.0;
-        //             break;
-        //         }
-        //         Vertex::Specular { scatter, .. } => {
-        //             result = result.component_mul(&scatter.attenuation);
-        //         }
-        //         Vertex::Scatter {
-        //             scatter,
-        //             pdf_fwd,
-        //             scatter_ray,
-        //             ..
-        //         } => {
-        //             result = result.component_mul(&scatter.attenuation);
-        //             result *= scatter.pdf.unwrap().value(scatter_ray.dir);
-        //             result *= pdf_fwd.recip();
-        //         }
-        //         Vertex::Camera(..) => unreachable!(),
-        //     }
-        // }
-        let mut result = camera_path[t].beta();
-        // if (result.x - camera_path[s].beta().x).abs() > 1.0 {
-        //     dbg!(s, camera_path[s].beta() - result);
-        //     let _: Vec<Color> =
-        //         dbg!(camera_path.iter().map(|v| v.beta()).collect());
-        //     unreachable!();
-        // }
-        for i in (0..=s).rev() {
-            match &light_path[i] {
-                Vertex::Light(_, color) => {
-                    result = result.component_mul(&color)
-                }
-                Vertex::Specular { scatter, .. } => {
-                    result = result.component_mul(&scatter.attenuation);
-                }
-                Vertex::Scatter {
-                    scatter,
-                    pdf_fwd,
-                    scatter_ray,
-                    ..
-                } => {
-                    result = result.component_mul(&scatter.attenuation);
-                    result *= scatter.pdf.unwrap().value(scatter_ray.dir);
-                    result *= pdf_fwd.recip();
-                }
-                Vertex::Camera(..) => unreachable!(),
-            }
-        }
-        result
+        vt.beta.component_mul(&vs.beta) * ((1 + s + t) as f64).recip()
     }
 
     fn gen_light_path(&self) -> Vec<Vertex> {
@@ -126,81 +74,92 @@ impl<'s> BDPT<'s> {
         }
 
         let mut ray = ray;
-        let mut result: Vec<Vertex> = vec![match kind {
-            WalkKind::Camera => Vertex::camera(ray),
-            WalkKind::Light => Vertex::light(ray, beta),
-        }];
+        let mut prev: Vertex = match kind {
+            WalkKind::Camera => Vertex::new(
+                VertexKind::Camera,
+                Unit::new_normalize(ray.dir),
+                ray.origin,
+                beta,
+                1.0,
+            ),
+            WalkKind::Light => Vertex::new(
+                VertexKind::Light,
+                Unit::new_normalize(ray.dir),
+                ray.origin,
+                beta,
+                1.0,
+            ),
+        };
+        let mut result: Vec<Vertex> = vec![];
         depth -= 1;
 
         while result.len() < depth as usize {
-            let prev = result.last_mut().unwrap();
             match self.scene.hit(ray, 0.0001..f64::INFINITY) {
                 None => break,
                 Some(hit) => {
                     let emit = hit.material.emitted(&hit);
                     if emit.norm_squared() > 0.0 {
                         beta = beta.component_mul(&emit);
-                        result.push(Vertex::Light(
-                            Ray {
-                                origin: hit.point,
-                                dir: *hit.normal,
-                            },
+                        prev.pdf_rev = 1.0;
+                        result.push(prev);
+                        prev = Vertex::new(
+                            VertexKind::Light,
+                            hit.normal,
+                            hit.point,
                             beta,
-                        ));
+                            1.0,
+                        );
                         break;
                     }
                     if let Some(scatter) = hit.material.scatter(&ray, &hit) {
                         if let Some(specular) = scatter.specular {
                             ray = specular;
-                            result.push(Vertex::specular(hit, scatter));
+                            prev.pdf_rev = 0.0;
+                            result.push(prev);
+                            prev = Vertex::new(
+                                VertexKind::Surface,
+                                hit.normal,
+                                hit.point,
+                                beta,
+                                1.0,
+                            );
                             continue;
                         }
                         if let Some(scatter_pdf) = scatter.pdf {
-                            let light_pdf =
-                                PDF::hittable(hit.point, &self.scene.lights);
-                            let final_pdf = scatter_pdf;
-                            let final_pdf = match kind {
-                                WalkKind::Camera => {
-                                    if self.scene.lights.is_empty() {
-                                        scatter_pdf
-                                    } else {
-                                        PDF::mix(0.75, &scatter_pdf, &light_pdf)
-                                    }
-                                }
-                                WalkKind::Light => scatter_pdf,
-                            };
                             let scatter_ray = Ray {
                                 origin: hit.point,
-                                dir: final_pdf.gen(),
+                                dir: scatter_pdf.gen(),
                             };
-                            ray = scatter_ray;
-                            let _g = self.g(prev, &hit);
-                            let pdf_fwd = final_pdf.value(scatter_ray.dir);
+                            let g = self.g(&prev, hit.point);
+                            let pdf_fwd =
+                                scatter_pdf.value(scatter_ray.dir) * g;
                             beta = beta.component_mul(&scatter.attenuation);
-                            beta *= scatter_pdf.value(scatter_ray.dir);
-                            beta *= pdf_fwd.recip();
-                            result.push(Vertex::scatter(
-                                hit,
-                                scatter,
-                                pdf_fwd,
+                            prev.pdf_rev =
+                                scatter_pdf.value(ray.origin - hit.point);
+                            result.push(prev);
+                            prev = Vertex::new(
+                                VertexKind::Surface,
+                                hit.normal,
+                                hit.point,
                                 beta,
-                                scatter_ray,
-                            ));
+                                pdf_fwd,
+                            );
+                            ray = scatter_ray;
                             continue;
                         }
                     }
                 }
             }
         }
+
+        result.push(prev);
         result
     }
 
     fn test_visibility(&self, v1: &Vertex, v2: &Vertex) -> bool {
         const EPS: f64 = 0.001;
-        let (p1, p2) = (
-            v1.point() + EPS * *v1.normal(),
-            v2.point() + EPS * *v2.normal(),
-        );
+        let (p1, p2) =
+            (v1.point + EPS * *v1.normal, v2.point + EPS * *v2.normal);
         let ray = Ray {
             origin: p1,
             dir: p2 - p1,
@@ -211,16 +170,17 @@ impl<'s> BDPT<'s> {
     }
 
     /// g_i(y) term in the light transport equation.
-    /// g_i(y) = cos(theta_i) * cos(theta_{i+1}) / || y_i - y_{i-1} ||^2
-    /// where thetas are the angle between surface normals and the segment
+    /// g_i(y) = cos(theta) / || d ||^2
+    /// where theta is the angle between surface normal at v1 and the segment
     /// connecting the vertices.
-    fn g(&self, v1: &Vertex, v2: &Hit) -> f64 {
-        let (p1, p2) = (v1.point(), v2.point);
+    /// Forward g_i is calculated by providing vertex i and i-1.
+    /// Reverse g_i is calculated by providing vertex i and i+1.
+    fn g(&self, v1: &Vertex, v2: Point) -> f64 {
+        let (p1, p2) = (v1.point, v2);
         let d = p2 - p1;
         let d_normalized = d.normalize();
-        let cos_theta1 = v1.normal().dot(&d_normalized);
-        let cos_theta2 = v2.normal.dot(&-d_normalized);
-        cos_theta1 * cos_theta2 / d.norm_squared()
+        let cos_theta = v1.normal.dot(&d_normalized);
+        cos_theta / d.norm_squared()
     }
 }
 
@@ -236,71 +196,37 @@ enum WalkKind {
     Light,
 }
 
-enum Vertex<'s> {
-    Camera(Ray),
-    Light(Ray, Color),
-    Specular {
-        hit: Hit<'s>,
-        scatter: Scatter<'s>,
-    },
-    Scatter {
-        hit: Hit<'s>,
-        scatter: Scatter<'s>,
-        pdf_fwd: f64,
-        pdf_rev: f64,
-        beta: Color,
-        scatter_ray: Ray,
-    },
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum VertexKind {
+    Camera,
+    Light,
+    Surface,
 }
 
-impl<'s> Vertex<'s> {
-    pub fn camera(ray: Ray) -> Vertex<'s> {
-        Vertex::Camera(ray)
-    }
-    pub fn light(ray: Ray, color: Color) -> Vertex<'s> {
-        Vertex::Light(ray, color)
-    }
-    pub fn specular(hit: Hit<'s>, scatter: Scatter<'s>) -> Vertex<'s> {
-        Vertex::Specular { hit, scatter }
-    }
-    pub fn scatter(
-        hit: Hit<'s>,
-        scatter: Scatter<'s>,
-        pdf_fwd: f64,
+struct Vertex {
+    pub kind: VertexKind,
+    pub normal: Unit<Vector>,
+    pub point: Point,
+    pub beta: Color,
+    pub pdf_fwd: f64,
+    pub pdf_rev: f64,
+}
+
+impl Vertex {
+    pub fn new(
+        kind: VertexKind,
+        normal: Unit<Vector>,
+        point: Point,
         beta: Color,
-        scatter_ray: Ray,
-    ) -> Vertex<'s> {
-        Vertex::Scatter {
-            hit,
-            scatter,
-            pdf_fwd,
+        pdf_fwd: f64,
+    ) -> Vertex {
+        Vertex {
+            kind,
+            normal,
+            point,
             beta,
+            pdf_fwd,
             pdf_rev: 0.0,
-            scatter_ray,
-        }
-    }
-    pub fn point(&self) -> Point {
-        match self {
-            Vertex::Camera(ray) => ray.origin,
-            Vertex::Light(ray, ..) => ray.origin,
-            Vertex::Specular { hit, .. } => hit.point,
-            Vertex::Scatter { hit, .. } => hit.point,
-        }
-    }
-    pub fn normal(&self) -> Unit<Vector> {
-        match self {
-            Vertex::Camera(ray) => Unit::new_normalize(ray.dir),
-            Vertex::Light(ray, ..) => Unit::new_normalize(ray.dir),
-            Vertex::Specular { hit, .. } => hit.normal,
-            Vertex::Scatter { hit, .. } => hit.normal,
-        }
-    }
-    pub fn beta(&self) -> Color {
-        match self {
-            Vertex::Camera(_) => Color::zeros(),
-            Vertex::Light(_, color) => *color,
-            Vertex::Specular { .. } => Color::zeros(),
-            Vertex::Scatter { beta, .. } => *beta,
         }
     }
 }
