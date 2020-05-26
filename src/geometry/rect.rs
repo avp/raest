@@ -143,7 +143,7 @@ impl Hittable for Rect {
         rand_point - origin
     }
 
-    fn emit(&self) -> Ray {
+    fn emit(&self) -> (Ray, Color) {
         const EPS: f64 = 0.0001;
         let dir = *self.axis.unit() + random_unit_vector();
         let rand_point = Point::new(
@@ -151,10 +151,20 @@ impl Hittable for Rect {
             random_range(self.p1.y - EPS..self.p2.y + EPS),
             random_range(self.p1.z - EPS..self.p2.z + EPS),
         );
-        Ray {
+        let ray = Ray {
             origin: rand_point,
             // TODO: Properly use normals here.
             dir: -1.0 * dir,
-        }
+        };
+        (
+            ray,
+            self.material.emitted(&Hit::new(
+                ray,
+                Unit::new_normalize(dir),
+                0.0,
+                &self.material,
+                (0.0, 0.0),
+            )),
+        )
     }
 }

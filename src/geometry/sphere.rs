@@ -1,4 +1,5 @@
 use super::{Hit, Hittable, Point, Ray, Vector, AABB};
+use crate::color::Color;
 use crate::geometry::onb::ONB;
 use crate::material::Material;
 use crate::util::*;
@@ -100,12 +101,22 @@ impl Hittable for Sphere {
         uvw.localize(self.random_to_sphere(dir))
     }
 
-    fn emit(&self) -> Ray {
+    fn emit(&self) -> (Ray, Color) {
         let dir = random_unit_vector();
-        Ray {
+        let ray = Ray {
             origin: self.center + (self.radius * dir),
             dir,
-        }
+        };
+        (
+            ray,
+            self.material.emitted(&Hit::new(
+                ray,
+                Unit::new_unchecked(dir),
+                0.0,
+                &self.material,
+                (0.0, 0.0),
+            )),
+        )
     }
 }
 
