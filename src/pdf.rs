@@ -52,9 +52,11 @@ impl<'scene> PDF<'scene> {
                 f64::max(0.0, cos / PI)
             }
             &PDF::Phong(_uvw, outbound, n) => {
+                // http://igorsklyar.com/system/documents/papers/4/fiscourse.comp.pdf
                 // pdf(theta) = (n+1)/(2\pi) * cos^n(alpha)
-                let cos_alpha = dir.normalize().dot(&outbound);
-                (((n + 1) as f64) / (2.0 * PI)) * cos_alpha.powi(n as i32 + 1)
+                let cos_theta_s = dir.normalize().dot(&outbound);
+                let sin_theta_s = (1.0 - cos_theta_s * cos_theta_s).sqrt();
+                (((n + 1) as f64) / (2.0 * PI)) * cos_theta_s.powi(n as i32 + 1) * sin_theta_s
             }
             PDF::Hittable(origin, hittable) => hittable.pdf(Ray {
                 origin: *origin,
@@ -70,17 +72,16 @@ impl<'scene> PDF<'scene> {
     pub fn gen(&self) -> Vector {
         match self {
             PDF::Cosine(uvw) => uvw.localize(random_cosine_dir()),
-            PDF::Phong(uvw, _outbound, n) => {
-                // https://www.cs.princeton.edu/courses/archive/fall16/cos526/papers/importance.pdf
+            PDF::Phong(uvw, outbound, n) => {
                 let r1 = random();
                 let r2 = random();
-                let cos_alpha = r1.powf(((n + 1) as f64).recip());
-                let sin_alpha = (1.0 - cos_alpha).sqrt();
+                let cos_theta = r1.powf(((n + 1) as f64).recip());
+                let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
                 let phi = 2.0 * PI * r2;
-                let x = phi.cos() * sin_alpha;
-                let y = phi.sin() * sin_alpha;
-                let z = cos_alpha;
-                uvw.localize(Vector::new(x, y, z))
+                let x = cos_theta * phi.sin();
+                let y = sin_theta * phi.sin();
+                let z = phi.cos();
+                ONB::from_w(*outbound).localize(Vector::new(x, y, z))
             }
             PDF::Hittable(origin, hittable) => hittable.random(*origin),
             PDF::Mix(bias, pdf1, pdf2) => {

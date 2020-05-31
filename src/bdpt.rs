@@ -243,7 +243,7 @@ impl<'s> BDPT<'s> {
                         if let Some(specular) = scatter.specular {
                             if let Some(scatter_pdf) = scatter.pdf {
                                 let scatter_ray = specular;
-                                let pdf_fwd = 1.0;
+                                let pdf_fwd = scatter_pdf.value(scatter_ray.dir);
                                 prev.pdf_rev = 1.0;
                                 let g_fwd =
                                     self.g(hit.point, hit.normal, prev.point);
