@@ -171,7 +171,7 @@ fn transform(desc: &SceneDesc) -> Option<Scene> {
         result.push(hittable);
     }
 
-    Some(Scene::from_objects(desc.background, result))
+    Scene::from_objects(desc.background, result)
 }
 
 pub(super) fn parse(config: &Config) -> (Scene, Camera) {

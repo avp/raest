@@ -60,18 +60,21 @@ impl Scene {
     fn from_objects(
         background: Color,
         objects: Vec<Arc<dyn Hittable>>,
-    ) -> Scene {
+    ) -> Option<Scene> {
         let mut lights = vec![];
         for obj in &objects {
             if obj.is_light() {
                 lights.push(obj.clone());
             }
         }
-        Scene {
+        if lights.is_empty() {
+            return None;
+        }
+        Some(Scene {
             background,
             bvh: BVHNode::from_hittables(objects),
             lights: HittableList::new(lights),
-        }
+        })
     }
 
     #[inline]
@@ -154,7 +157,7 @@ impl Scene {
         let camera = Camera::new(from, at, up, 20.0, aspect_ratio, 0.1, dist);
 
         (
-            Self::from_objects(Color::new(0.5, 0.7, 1.0), objects),
+            Self::from_objects(Color::new(0.5, 0.7, 1.0), objects).unwrap(),
             camera,
         )
     }
@@ -177,7 +180,8 @@ impl Scene {
             2.0,
         );
         (
-            Scene::from_objects(Color::new(0.5, 0.7, 1.0), vec![global]),
+            Scene::from_objects(Color::new(0.5, 0.7, 1.0), vec![global])
+                .unwrap(),
             camera,
         )
     }
@@ -278,7 +282,7 @@ impl Hittable for HittableList {
             .hittables
             .as_slice()
             .choose(&mut rand::thread_rng())
-            .unwrap();
+            .expect("no hittables populated");
         h.emit()
     }
 }
