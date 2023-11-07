@@ -56,7 +56,9 @@ impl<'scene> PDF<'scene> {
                 // pdf(theta) = (n+1)/(2\pi) * cos^n(alpha)
                 let cos_theta_s = dir.normalize().dot(&outbound);
                 let sin_theta_s = (1.0 - cos_theta_s * cos_theta_s).sqrt();
-                (((n + 1) as f64) / (2.0 * PI)) * cos_theta_s.powi(n as i32 + 1) * sin_theta_s
+                (((n + 1) as f64) / (2.0 * PI))
+                    * cos_theta_s.powi(n as i32 + 1)
+                    * sin_theta_s
             }
             PDF::Hittable(origin, hittable) => hittable.pdf(Ray {
                 origin: *origin,

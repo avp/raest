@@ -1,5 +1,3 @@
-#![feature(clamp)]
-
 use std::sync::Arc;
 use structopt::StructOpt;
 
